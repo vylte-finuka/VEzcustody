@@ -6,12 +6,7 @@ pragma solidity ^0.8.26;
 ///====≈====≈===
 /// AggregatorV3Interface – Interface Oracle / Proof of Reserve
 ///====≈====≈===
-/// @notice Interface minimale compatible avec un agrégateur Chainlink
-/// @dev Utilisée pour récupérer la dernière valeur publiée par l'oracle.
-///      Dans le cas de VEZ, cette valeur peut représenter le prix EUR/USD
-///      ou une donnée de réserve publiée par l'infrastructure Oracle.
 interface AggregatorV3Interface {
-
     function latestRoundData()
         external
         view
@@ -25,132 +20,122 @@ interface AggregatorV3Interface {
 }
 
 ///====≈====≈===
-/// EACAggregatorProxy – Oracle fixe pour VEZ / Proof of Reserve
+/// EACAggregatorProxy – Oracle PoR autonome pour VEZ
 ///====≈====≈===
-/// @notice Proxy Oracle utilisé par VEZproxy et reservVEZ.
-///
-/// @dev L'adresse de l'agrégateur est volontairement HARDCODÉE.
-///      Le contrat principal n'a donc pas besoin de recevoir l'adresse
-///      de l'oracle à chaque déploiement.
-///
-///      L'agrégateur situé à cette adresse doit implémenter
-///      AggregatorV3Interface.
-///
-///      Pour un véritable PoR, l'agrégateur doit publier une donnée
-///      correspondant réellement à la réserve attestée et non simplement
-///      à un prix de marché.
-///
-///      Exemple :
-///        answer = montant des réserves en EUR
-///
-///      ou, si cet oracle est utilisé comme simple Price Feed :
-///        answer = prix EUR/USD
-///
-///      La distinction entre Price Feed et Proof of Reserve doit être
-///      maintenue dans l'architecture afin de ne pas considérer un prix
-///      de marché comme une preuve de collatéral.
-contract EACAggregatorProxy {
+/// @notice Ce contrat est le VRAI oracle on-chain pour le Proof of Reserve.
+///         Il remplace le placeholder 0x555... et publie directement
+///         les données de réserve EUR pour le stablecoin VEZ.
+///         Le propriétaire (custodian) peut mettre à jour les données via
+///         une transaction déclenchée par le workflow CRE.
+contract EACAggregatorProxy is AggregatorV3Interface {
 
-    ///====≈====≈=== CONSTANTES
-    /// Adresse fixe de l'agrégateur Oracle / PoR sur Slura
-    /// @dev À remplacer par l'adresse réelle du contrat Oracle déployé
-    ///      sur la chaîne Slura.
-    address public constant AGGREGATOR =
-        0x5555555555555555555555555555555555555555;
+    ///====≈====≈=== DONNÉES ORACLE
+    uint80 public roundId;
+    int256 public answer;
+    uint256 public startedAt;
+    uint256 public updatedAt;
+    uint80 public answeredInRound;
 
-    ///====≈====≈=== VARIABLES
-    AggregatorV3Interface public immutable aggregator;
+    ///====≈====≈=== ADMIN
+    address public owner;
 
-    ///====≈====≈=== CONSTRUCTOR – Connexion à l'agrégateur Oracle
+    ///====≈====≈=== EVENTS
+    event RoundUpdated(
+        uint80 indexed roundId,
+        int256 answer,
+        uint256 updatedAt
+    );
+
+    ///====≈====≈=== CONSTRUCTOR
     constructor() {
-        aggregator = AggregatorV3Interface(AGGREGATOR);
+        owner = msg.sender;
+        roundId = 1;
+        answer = 1000000000000000000000000; // 1 EUR avec 18 décimales
+        startedAt = block.timestamp;
+        updatedAt = block.timestamp;
+        answeredInRound = 1;
     }
 
-    ///====≈====≈=== LATEST ROUND DATA – Valeur Oracle
-    /// @notice Retourne uniquement la valeur publiée par le dernier round.
-    ///
-    /// @dev Cette fonction conserve volontairement la signature utilisée
-    ///      actuellement par VEZproxy :
-    ///
-    ///          int256 price = priceFeed.latestRoundData();
-    ///
-    ///      Elle permet donc à VEZproxy et reservVEZ d'utiliser directement
-    ///      la valeur Oracle sans gérer toute la structure Chainlink.
-    ///
-    /// @return answer Valeur publiée par l'agrégateur.
-    function latestRoundData() external view returns (int256 answer) {
-        (
-            ,
-            int256 _answer,
-            ,
-            ,
-            
-        ) = aggregator.latestRoundData();
+    ///====≈====≈=== MISE À JOUR DES DONNÉES PoR
+    /// Seul le propriétaire (custodian / oracle) peut mettre à jour.
+    function updateRoundData(
+        int256 _answer,
+        uint256 _timestamp
+    ) external {
+        require(msg.sender == owner, "Only owner");
+        require(_timestamp <= block.timestamp, "Future timestamp");
+        require(_timestamp >= updatedAt, "Old timestamp");
 
-        return _answer;
+        roundId += 1;
+        answer = _answer;
+        startedAt = _timestamp;
+        updatedAt = _timestamp;
+        answeredInRound = roundId;
+
+        emit RoundUpdated(roundId, _answer, _timestamp);
     }
 
-    ///====≈====≈=== GET AGGREGATOR ADDRESS – Adresse Oracle
-    /// @notice Retourne l'adresse de l'agrégateur actuellement utilisé.
-    ///
-    /// @dev Fonction utile pour le front-end, les outils de monitoring,
-    ///      les audits et la vérification de l'infrastructure PoR.
-    function getAggregatorAddress()
+    ///====≈====≈=== LATEST ROUND DATA
+    function latestRoundData()
         external
-        pure
-        returns (address)
+        view
+        override
+        returns (
+            uint80 _roundId,
+            int256 _answer,
+            uint256 _startedAt,
+            uint256 _updatedAt,
+            uint80 _answeredInRound
+        )
     {
-        return AGGREGATOR;
+        return (
+            roundId,
+            answer,
+            startedAt,
+            updatedAt,
+            answeredInRound
+        );
     }
 
-    ///====≈====≈=== GET FULL ROUND DATA – Données complètes Oracle
-    /// @notice Retourne toutes les données du dernier round.
-    ///
-    /// @dev Cette fonction est particulièrement utile pour le PoR car
-    ///      elle permet de vérifier :
-    ///        - la valeur publiée ;
-    ///        - le numéro de round ;
-    ///        - la date de mise à jour ;
-    ///        - la fraîcheur de la donnée Oracle.
-    ///
-    /// @return roundId Identifiant du round Oracle.
-    /// @return answer Valeur publiée par l'agrégateur.
-    /// @return startedAt Date de début du round.
-    /// @return updatedAt Date de dernière mise à jour.
-    /// @return answeredInRound Round ayant fourni la réponse.
+    ///====≈====≈=== GET FULL ROUND DATA
     function getFullRoundData()
         external
         view
         returns (
-            uint80 roundId,
-            int256 answer,
-            uint256 startedAt,
-            uint256 updatedAt,
-            uint80 answeredInRound
+            uint80 _roundId,
+            int256 _answer,
+            uint256 _startedAt,
+            uint256 _updatedAt,
+            uint80 _answeredInRound
         )
     {
-        return aggregator.latestRoundData();
+        return this.latestRoundData();
     }
 
-    ///====≈====≈=== ORACLE HEALTH – Vérification Oracle
-    /// @notice Vérifie que l'Oracle retourne une valeur exploitable.
-    ///
-    /// @dev Cette fonction ne constitue PAS à elle seule une preuve
-    ///      de réserves. Elle vérifie uniquement que la donnée Oracle
-    ///      est positive et qu'elle possède un timestamp valide.
+    ///====≈====≈=== ORACLE HEALTH
     function isOracleValid()
         external
         view
         returns (bool)
     {
-        (
-            ,
-            int256 answer,
-            ,
-            uint256 updatedAt,
-            
-        ) = aggregator.latestRoundData();
-
         return answer > 0 && updatedAt > 0;
+    }
+
+    ///====≈====≈=== TRANSFERT DE PROPRIÉTÉ
+    function transferOwnership(address newOwner) external {
+        require(msg.sender == owner, "Only owner");
+        owner = newOwner;
+    }
+
+    ///====≈====≈=== COMPATIBILITÉ AVEC L'ANCIENNE INTERFACE
+    /// @notice Retourne l'adresse de l'agrégateur (ce contrat lui-même).
+    /// @dev Cette fonction est conservée pour la compatibilité avec les contrats
+    ///      qui attendent une fonction getAggregatorAddress().
+    function getAggregatorAddress()
+        external
+        view
+        returns (address)
+    {
+        return address(this);
     }
 }

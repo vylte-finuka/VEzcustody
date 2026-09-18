@@ -38,7 +38,8 @@ evm:
     - readEvmState
     - writeEvmState
   # Contract addresses for VEZ stablecoin
+  # NOTE: Replace with actual deployed addresses after deployment
   contracts:
     vezProxy: "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
-    reserveProof: "0x5555555555555555555555555555555555555555"
-    aggregator: "0x5555555555555555555555555555555555555555"
+    reserveProof: "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+    aggregator: "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"

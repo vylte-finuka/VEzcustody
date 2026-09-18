@@ -1,11 +1,12 @@
 import {
   EVMClient,
   getNetwork,
-  encodeFunctionData,
   prepareReportRequest,
-  TxStatus,
+  encodeCallMsg,
   type Runtime,
+  TxStatus,
 } from "@chainlink/cre-sdk"
+import { encodeFunctionData, type Address } from "viem"
 import { z } from "zod"
 
 const ConfigSchema = z.object({
@@ -29,8 +30,8 @@ const CONTRACT_ABI = [
   },
 ] as const
 
-export const handler = async (runtime: Runtime) => {
-  const config = ConfigSchema.parse(runtime.getConfig())
+export const handler = async (runtime: Runtime<Config>) => {
+  const config = ConfigSchema.parse(runtime.config)
   const network = getNetwork({
     chainFamily: "evm",
     chainSelectorName: config.chainSelectorName,
@@ -38,16 +39,16 @@ export const handler = async (runtime: Runtime) => {
   })
   if (!network) throw new Error(`Network not found: ${config.chainSelectorName}`)
 
-  const evmClient = new EVMClient(network.chainSelector.selector)
+  const evm = new EVMClient(network.chainSelector.selector)
 
   const writeData = encodeFunctionData({
     abi: CONTRACT_ABI,
     functionName: "mint",
-    args: [config.receiverAddress, 1000000000000000000n],
+    args: [config.receiverAddress as Address, 1000000000000000000n],
   })
 
   const report = runtime.report(prepareReportRequest(writeData)).result()
-  const response = evmClient
+  const response = evm
     .writeReport(runtime, { receiver: config.receiverAddress, report })
     .result()
 

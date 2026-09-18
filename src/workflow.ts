@@ -10,285 +10,297 @@
 import {
   EVMClient,
   getNetwork,
-  hexToBase64,
-  bytesToHex,
-  TxStatus,
+  prepareReportRequest,
+  encodeCallMsg,
   type Runtime,
-  type EvmTx,
+  LAST_FINALIZED_BLOCK_NUMBER,
+  TxStatus,
 } from "@chainlink/cre-sdk"
-import { encodeAbiParameters } from "viem"
-import { formatUnits, parseUnits } from "viem"
+import { encodeFunctionData, type Address } from "viem"
+import { z } from "zod"
 
-// ============================================================
-// Configuration
-// ============================================================
+const ConfigSchema = z.object({
+  chainSelectorName: z.string(),
+  receiverAddress: z.string(),
+  contractAddress: z.string(),
+})
 
-// Slura chain configuration (chainId 45057)
-const CHAIN_ID = "45057"
-const RPC_URL = "https://slu-charene.vyft-one.com"
+type Config = z.infer<typeof ConfigSchema>
 
-// Contract addresses on Slura
-const VEZ_PROXY_ADDRESS = "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
-const RESERVE_PROOF_ADDRESS = "0x5555555555555555555555555555555555555555"
-const AGGREGATOR_ADDRESS = "0x5555555555555555555555555555555555555555"
+// Contract addresses from project.yaml / cre.toml
+const VEZ_PROXY_ADDRESS = "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE" as Address
+const AGGREGATOR_ADDRESS = "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE" as Address
 
-// Custodian private key (from secrets.yaml/CRE_CUSTODIAN_PRIVATE_KEY)
-// This key signs all on-chain operations
-const CUSTODIAN_PRIVATE_KEY = process.env.CRE_CUSTODIAN_PRIVATE_KEY || ""
-
-// ============================================================
-// EVM Client Setup
-// ============================================================
-
-const network = getNetwork(CHAIN_ID)
-const evm = new EVMClient(network, RPC_URL)
-
-// ============================================================
-// Capabilities
-// ============================================================
-
-/**
- * Sign and send an EVM transaction
- * @param to Recipient address
- * @param data Encoded calldata
- * @param value ETH value (in wei)
- * @returns Transaction hash
- */
-async function signEvmTx(
-  to: string,
-  data: string,
-  value: bigint = 0n
-): Promise<string> {
-  if (!CUSTODIAN_PRIVATE_KEY) {
-    throw new Error("CUSTODIAN_PRIVATE_KEY not configured")
-  }
-
-  const tx: EvmTx = {
-    to,
-    data,
-    value,
-  }
-
-  const signedTx = await evm.signEvmTransaction(tx, CUSTODIAN_PRIVATE_KEY)
-  const hash = await evm.sendEvmTransaction(signedTx)
-
-  return hash
-}
-
-/**
- * Mint VEZ tokens via the proxy contract
- * @param to Recipient address
- * @param amount Amount in VEZ (18 decimals)
- * @returns Transaction hash
- */
-async function mintVez(to: string, amount: bigint): Promise<string> {
-  // Encode mint calldata: mint(address to, uint256 amount)
-  const mintData = evm.encodeEvmCall({
-    abi: [
-      {
-        name: "mint",
-        type: "function",
-        inputs: [
-          { name: "to", type: "address" },
-          { name: "amount", type: "uint256" },
-        ],
-        stateMutability: "nonpayable",
-        outputs: [],
-      },
+const VEZ_PROXY_ABI = [
+  {
+    name: "mint",
+    type: "function",
+    inputs: [
+      { name: "to", type: "address" },
+      { name: "amount", type: "uint256" },
     ],
-    address: VEZ_PROXY_ADDRESS,
-    args: [to, amount],
-  })
-
-  return signEvmTx(VEZ_PROXY_ADDRESS, mintData)
-}
-
-/**
- * Transfer VEZ tokens (with burn if configured)
- * @param from Sender address
- * @param to Recipient address
- * @param amount Amount in VEZ (18 decimals)
- * @returns Transaction hash
- */
-async function transferVez(
-  from: string,
-  to: string,
-  amount: bigint
-): Promise<string> {
-  const transferData = evm.encodeEvmCall({
-    abi: [
-      {
-        name: "transfer",
-        type: "function",
-        inputs: [
-          { name: "to", type: "address" },
-          { name: "amount", type: "uint256" },
-        ],
-        stateMutability: "nonpayable",
-        outputs: [],
-      },
+    stateMutability: "nonpayable",
+    outputs: [],
+  },
+  {
+    name: "transfer",
+    type: "function",
+    inputs: [
+      { name: "to", type: "address" },
+      { name: "amount", type: "uint256" },
     ],
-    address: VEZ_PROXY_ADDRESS,
-    args: [to, amount],
-  })
-
-  return signEvmTx(from, transferData)
-}
-
-/**
- * Obtain (burn) VEZ tokens for fiat redemption
- * @param amount Amount in VEZ (18 decimals) to burn
- * @param proof Redemption proof (off-chain KYC/AML data)
- * @returns Transaction hash
- */
-async function obtainVez(amount: bigint, proof: string): Promise<string> {
-  const obtainData = evm.encodeEvmCall({
-    abi: [
-      {
-        name: "obtain",
-        type: "function",
-        inputs: [
-          { name: "amount", type: "uint256" },
-          { name: "proof", type: "string" },
-        ],
-        stateMutability: "nonpayable",
-        outputs: [],
-      },
+    stateMutability: "nonpayable",
+    outputs: [],
+  },
+  {
+    name: "obtain",
+    type: "function",
+    inputs: [
+      { name: "amount", type: "uint256" },
+      { name: "proof", type: "string" },
     ],
-    address: VEZ_PROXY_ADDRESS,
-    args: [amount, proof],
-  })
+    stateMutability: "nonpayable",
+    outputs: [],
+  },
+  {
+    name: "balanceOf",
+    type: "function",
+    inputs: [{ name: "account", type: "address" }],
+    stateMutability: "view",
+    outputs: [{ name: "", type: "uint256" }],
+  },
+] as const
 
-  return signEvmTx(CUSTODIAN_PRIVATE_KEY || "", obtainData)
-}
-
-/**
- * Check reserve status via aggregator proxy
- * @returns Reserve status data
- */
-async function checkReserves() {
-  const reserveData = evm.encodeEvmCall({
-    abi: [
-      {
-        name: "latestRoundData",
-        type: "function",
-        inputs: [],
-        stateMutability: "view",
-        outputs: [
-          { name: "roundId", type: "uint80" },
-          { name: "answer", type: "int256" },
-          { name: "startedAt", type: "uint256" },
-          { name: "updatedAt", type: "uint256" },
-          { name: "answeredInRound", type: "uint80" },
-        ],
-      },
+const AGGREGATOR_ABI = [
+  {
+    name: "getFullRoundData",
+    type: "function",
+    inputs: [],
+    stateMutability: "view",
+    outputs: [
+      { name: "roundId", type: "uint80" },
+      { name: "answer", type: "int256" },
+      { name: "startedAt", type: "uint256" },
+      { name: "updatedAt", type: "uint256" },
+      { name: "answeredInRound", type: "uint80" },
     ],
-    address: AGGREGATOR_ADDRESS,
-    args: [],
-  })
+  },
+  {
+    name: "updateRoundData",
+    type: "function",
+    inputs: [
+      { name: "_answer", type: "int256" },
+      { name: "_timestamp", type: "uint256" },
+    ],
+    stateMutability: "nonpayable",
+    outputs: [],
+  },
+  {
+    name: "latestRoundData",
+    type: "function",
+    inputs: [],
+    stateMutability: "view",
+    outputs: [
+      { name: "roundId", type: "uint80" },
+      { name: "answer", type: "int256" },
+      { name: "startedAt", type: "uint256" },
+      { name: "updatedAt", type: "uint256" },
+      { name: "answeredInRound", type: "uint80" },
+    ],
+  },
+] as const
 
-  const result = await evm.callEvmContract({
-    to: AGGREGATOR_ADDRESS,
-    data: reserveData,
-  })
+const network = getNetwork({
+  chainFamily: "evm",
+  chainSelectorName: "slura",
+  isTestnet: true,
+})
 
-  return {
-    roundId: result.roundId.toString(),
-    answer: result.answer.toString(),
-    startedAt: result.startedAt.toString(),
-    updatedAt: result.updatedAt.toString(),
-    answeredInRound: result.answeredInRound.toString(),
-  }
-}
+if (!network) throw new Error(`Network not found: slura`)
 
-// ============================================================
-// Main Workflow Entry Point
-// ============================================================
+const evm = new EVMClient(network.chainSelector.selector)
 
-/**
- * Main handler - called by CRE CLI during simulation
- * This is the entry point that CRE invokes
- */
-export const handler = async (runtime: Runtime) => {
-  // Get input parameters from the workflow trigger
-  const { action, params } = runtime.getInput()
+// Main handler - called by CRE CLI during simulation
+export const handler = async (runtime: Runtime<Config>, triggerOutput?: unknown) => {
+  // Parse trigger output (input parameters)
+  const input = triggerOutput ? JSON.parse(JSON.stringify(triggerOutput)) : {}
+  const { action, params } = input as { action: string; params?: any }
 
   console.log(`VEZ Workflow executing: action=${action}`)
 
   try {
     switch (action) {
       case "check-reserves": {
-        const reserves = await checkReserves()
-        console.log("Reserve status:", reserves)
-        runtime.log(`Reserves checked: ${JSON.stringify(reserves)}`)
-        return { success: true, data: reserves }
+        const reserveData = encodeFunctionData({
+          abi: AGGREGATOR_ABI,
+          functionName: "getFullRoundData",
+          args: [],
+        })
+
+        const call = encodeCallMsg({
+          from: VEZ_PROXY_ADDRESS,
+          to: AGGREGATOR_ADDRESS,
+          data: reserveData as `0x${string}`,
+        })
+
+        const reply = evm.callContract(runtime, {
+          call,
+          blockNumber: LAST_FINALIZED_BLOCK_NUMBER,
+        }).result()
+
+        const reserves = {
+          roundId: reply.data ? reply.data.toString() : "0",
+          answer: reply.data ? reply.data.toString() : "0",
+          priceEUR: reply.data ? (parseInt(reply.data.toString()) / 1e8).toFixed(4) : "1.0000",
+          pegDeviationBps: reply.data ? Math.round((parseInt(reply.data.toString()) / 1e8 - 1) * 10000) : 0,
+        }
+
+        const priceEUR = parseFloat(reserves.priceEUR || "1.0000")
+        const deviation = Math.abs(priceEUR - 1.0)
+        const action = deviation > 0.003 ? (priceEUR < 1 ? "obtain" : "mint") : "hold"
+        console.log(`Peg EUR=${priceEUR}, deviation=${deviation.toFixed(4)}, action=${action}`)
+        return { success: true, data: reserves, priceEUR, deviation, action }
+      }
+
+      case "update-oracle": {
+        const { answer, timestamp } = params as { answer: string; timestamp: string }
+        if (!answer || !timestamp) {
+          throw new Error("Missing update-oracle parameters: answer and timestamp required")
+        }
+
+        const writeData = encodeFunctionData({
+          abi: AGGREGATOR_ABI,
+          functionName: "updateRoundData",
+          args: [BigInt(answer), BigInt(timestamp)],
+        })
+
+        const report = runtime.report(prepareReportRequest(writeData)).result()
+        const response = evm
+          .writeReport(runtime, { receiver: AGGREGATOR_ADDRESS, report })
+          .result() as any
+
+        if (response.txStatus !== "SUCCESS") {
+          throw new Error(
+            response.errorMessage || `Oracle update failed: ${response.txStatus}`
+          )
+        }
+
+        console.log(`Oracle updated: answer=${answer}, tx: ${response.txHash}`)
+        runtime.log(`Oracle update completed: ${response.txHash}`)
+        return { success: true, txHash: response.txHash, answer, timestamp }
       }
 
       case "mint": {
-        const { to, amount } = params
+        const { to, amount } = params as { to: string; amount: string }
         if (!to || !amount) {
           throw new Error("Missing mint parameters: to and amount required")
         }
 
-        const amountWei = parseUnits(amount.toString(), 18)
-        const txHash = await mintVez(to, amountWei)
-        console.log(`Minted ${amountWei} VEZ to ${to}, tx: ${txHash}`)
+        const amountWei = BigInt(amount)
+        const writeData = encodeFunctionData({
+          abi: VEZ_PROXY_ABI,
+          functionName: "mint",
+          args: [to as Address, amountWei],
+        })
 
-        runtime.log(`Mint completed: ${txHash}`)
-        return { success: true, txHash, amount: amountWei.toString() }
+        const report = runtime.report(prepareReportRequest(writeData)).result()
+        const response = evm
+          .writeReport(runtime, { receiver: VEZ_PROXY_ADDRESS, report })
+          .result() as any
+
+        if (response.txStatus !== "SUCCESS") {
+          throw new Error(
+            response.errorMessage || `Mint failed: ${response.txStatus}`
+          )
+        }
+
+        console.log(`Minted ${amountWei} VEZ to ${to}, tx: ${response.txHash}`)
+        runtime.log(`Mint completed: ${response.txHash}`)
+        return { success: true, txHash: response.txHash, amount: amountWei.toString() }
       }
 
       case "transfer": {
-        const { from, to, amount } = params
+        const { from, to, amount } = params as { from: string; to: string; amount: string }
         if (!from || !to || !amount) {
           throw new Error("Missing transfer parameters: from, to and amount required")
         }
 
-        const amountWei = parseUnits(amount.toString(), 18)
-        const txHash = await transferVez(from, to, amountWei)
-        console.log(`Transferred ${amountWei} VEZ from ${from} to ${to}, tx: ${txHash}`)
+        const amountWei = BigInt(amount)
+        const writeData = encodeFunctionData({
+          abi: VEZ_PROXY_ABI,
+          functionName: "transfer",
+          args: [to as Address, amountWei],
+        })
 
-        runtime.log(`Transfer completed: ${txHash}`)
-        return { success: true, txHash, amount: amountWei.toString() }
+        const report = runtime.report(prepareReportRequest(writeData)).result()
+        const response = evm
+          .writeReport(runtime, { receiver: VEZ_PROXY_ADDRESS, report })
+          .result() as any
+
+        if (response.txStatus !== "SUCCESS") {
+          throw new Error(
+            response.errorMessage || `Transfer failed: ${response.txStatus}`
+          )
+        }
+
+        console.log(`Transferred ${amountWei} VEZ from ${from} to ${to}, tx: ${response.txHash}`)
+        runtime.log(`Transfer completed: ${response.txHash}`)
+        return { success: true, txHash: response.txHash, amount: amountWei.toString() }
       }
 
       case "obtain": {
-        const { amount, proof } = params
+        const { amount, proof } = params as { amount: string; proof: string }
         if (!amount || !proof) {
           throw new Error("Missing obtain parameters: amount and proof required")
         }
 
-        const amountWei = parseUnits(amount.toString(), 18)
-        const txHash = await obtainVez(amountWei, proof)
-        console.log(`Obtained (burned) ${amountWei} VEZ, tx: ${txHash}`)
+        const amountWei = BigInt(amount)
+        const writeData = encodeFunctionData({
+          abi: VEZ_PROXY_ABI,
+          functionName: "obtain",
+          args: [amountWei, proof],
+        })
 
-        runtime.log(`Obtain completed: ${txHash}`)
-        return { success: true, txHash, amount: amountWei.toString() }
+        const report = runtime.report(prepareReportRequest(writeData)).result()
+        const response = evm
+          .writeReport(runtime, { receiver: VEZ_PROXY_ADDRESS, report })
+          .result() as any
+
+        if (response.txStatus !== "SUCCESS") {
+          throw new Error(
+            response.errorMessage || `Obtain failed: ${response.txStatus}`
+          )
+        }
+
+        console.log(`Obtained (burned) ${amountWei} VEZ, tx: ${response.txHash}`)
+        runtime.log(`Obtain completed: ${response.txHash}`)
+        return { success: true, txHash: response.txHash, amount: amountWei.toString() }
       }
 
       case "get-status": {
-        // Check user status via custodian
-        const status = await runtime.callEvmContract({
-          to: VEZ_PROXY_ADDRESS,
-          data: evm.encodeEvmCall({
-            abi: [
-              {
-                name: "balanceOf",
-                type: "function",
-                inputs: [{ name: "account", type: "address" }],
-                stateMutability: "view",
-                outputs: [{ name: "", type: "uint256" }],
-              },
-            ],
-            address: VEZ_PROXY_ADDRESS,
-            args: [runtime.getCaller()],
-          }),
+        const caller = runtime.config.receiverAddress
+        
+        const balanceData = encodeFunctionData({
+          abi: VEZ_PROXY_ABI,
+          functionName: "balanceOf",
+          args: [caller as Address],
         })
+
+        const call = encodeCallMsg({
+          from: VEZ_PROXY_ADDRESS,
+          to: VEZ_PROXY_ADDRESS,
+          data: balanceData as `0x${string}`,
+        })
+
+        const reply = evm.callContract(runtime, {
+          call,
+          blockNumber: LAST_FINALIZED_BLOCK_NUMBER,
+        }).result()
 
         return {
           success: true,
-          balance: status.balance.toString(),
-          caller: runtime.getCaller(),
+          balance: reply.data ? reply.data.toString() : "0",
+          caller,
         }
       }
 
@@ -297,7 +309,9 @@ export const handler = async (runtime: Runtime) => {
     }
   } catch (error) {
     console.error("VEZ workflow error:", error)
-    runtime.log(`Error: ${error instanceof Error ? error.message : String(error)}`)
+    runtime.log(
+      `Error: ${error instanceof Error ? error.message : String(error)}`
+    )
     throw error
   }
 }

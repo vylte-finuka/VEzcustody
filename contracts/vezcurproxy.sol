@@ -394,7 +394,7 @@ contract VEZproxy is ERC20, Ownable, UUPSUpgradeable {
         uint256 amount,
         address disburser
     )
-        external
+        public
     {
         require(
             amount > 0 &&
