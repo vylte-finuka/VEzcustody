@@ -1,0 +1,16 @@
+name: VEZ CRE Workflow
+on: [push, workflow_dispatch]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - run: npm ci
+      - run: npm run build  # cre workflow build
+      - run: npm run simulate  # cre workflow simulate
+      - env:
+          CRE_ACCESS_TOKEN: ${{ secrets.CRE_ACCESS_TOKEN }}
+          CRE_CUSTODIAN_PRIVATE_KEY: ${{ secrets.CRE_CUSTODIAN_PRIVATE_KEY }}
+        run: npm run deploy  # cre workflow deploy
