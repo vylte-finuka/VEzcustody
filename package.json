@@ -4,9 +4,9 @@
   "description": "Chainlink CRE workflow for VEZ stablecoin orchestration on Slura chain (chainId 45057)",
   "main": "dist/workflow.js",
   "scripts": {
-    "build": "cre workflow build",
-    "simulate": "cre workflow simulate",
-    "deploy": "cre workflow deploy",
+    "build": "tsc",
+    "simulate": "node dist/workflow.js",
+    "deploy": "node dist/workflow.js deploy",
     "test": "jest"
   },
   "keywords": [
