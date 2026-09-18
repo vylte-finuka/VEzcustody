@@ -21,6 +21,6 @@ jobs:
       
       # Déployer via SDK (optionnel)
       # - run: node dist/workflow.js deploy
-        env:
-          CRE_ACCESS_TOKEN: ${{ secrets.CRE_ACCESS_TOKEN }}
-          CRE_CUSTODIAN_PRIVATE_KEY: ${{ secrets.CRE_CUSTODIAN_PRIVATE_KEY }}
+      #   env:
+      #     CRE_ACCESS_TOKEN: ${{ secrets.CRE_ACCESS_TOKEN }}
+      #     CRE_CUSTODIAN_PRIVATE_KEY: ${{ secrets.CRE_CUSTODIAN_PRIVATE_KEY }}
