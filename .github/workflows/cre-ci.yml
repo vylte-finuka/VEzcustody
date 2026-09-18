@@ -1,0 +1,48 @@
+name: Chainlink CRE CI/CD Pipeline
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+
+jobs:
+  test-and-simulate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Install Chainlink CRE CLI
+        run: |
+          curl -sSFL https://chain.link | sh
+          echo "$HOME/.cre/bin" >> $GITHUB_PATH
+
+      - name: Authenticate CRE CLI Non-Interactively
+        env:
+          CRE_ACCESS_TOKEN: ${{ secrets.CRE_ACCESS_TOKEN }}
+        run: |
+          cre config set auth.token "$CRE_ACCESS_TOKEN"
+
+      - name: Run CRE Workflow Simulation
+        env:
+          CRE_CUSTODIAN_PRIVATE_KEY: ${{ secrets.CRE_CUSTODIAN_PRIVATE_KEY }}
+        run: |
+          set +x
+          cre compile workflow.ts --output build/workflow.wasm
+          cre simulate build/workflow.wasm --non-interactive
+
+      - name: Deploy Workflow to Chainlink DON
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        env:
+          CRE_ACCESS_TOKEN: ${{ secrets.CRE_ACCESS_TOKEN }}
+        run: |
+          cre workflow deploy build/workflow.wasm --activate --yes

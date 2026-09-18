@@ -1,0 +1,7 @@
+name = "vez-stablecoin-orchestrator"
+version = "1.0.0"
+language = "typescript"
+
+[environment.simulation]
+reservVezAddress = "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE"
+vezProxyAddress = "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE"

@@ -1,0 +1,44 @@
+name: "vez-stablecoin-orchestrator"
+version: "1.0.0"
+description: "Chainlink CRE workflow for VEZ stablecoin on Slura (chainId 45057)"
+
+# Project settings
+language: typescript
+
+# Source entry point
+workflow-path: "./src/main.ts"
+
+# Build settings
+build:
+  command: "npm run build"
+  output: "dist/workflow.wasm"
+
+# Targets for different environments
+targets:
+  production:
+    chain-id: 45057
+    chain-selector: "45057"
+    network: "slu-charene.vyft-one.com"
+    rpc-url: "https://slu-charene.vyft-one.com"
+    # Allow unknown/custom chain for Slura
+    allow-unknown-chains: true
+    # Use non-interactive mode for CI/CD
+    non-interactive: true
+
+# Secrets mapping (read from environment / secrets.yaml)
+secrets:
+  CRE_ACCESS_TOKEN: "${CRE_ACCESS_TOKEN}"
+  CRE_CUSTODIAN_PRIVATE_KEY: "${CRE_CUSTODIAN_PRIVATE_KEY}"
+  ORACLE_PRIVATE_KEY: "${CRE_CUSTODIAN_PRIVATE_KEY}"
+
+# EVM capabilities for on-chain interaction
+evm:
+  capabilities:
+    - signEvmTransaction
+    - readEvmState
+    - writeEvmState
+  # Contract addresses for VEZ stablecoin
+  contracts:
+    vezProxy: "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+    reserveProof: "0x5555555555555555555555555555555555555555"
+    aggregator: "0x5555555555555555555555555555555555555555"
