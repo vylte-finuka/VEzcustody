@@ -19,7 +19,7 @@
   "author": "Vyft",
   "license": "UNLICENSED",
   "dependencies": {
-    "@chainlink/cre-sdk": "github:vylte-finuka/cre-sdk",
+    "@chainlink/cre-sdk": "latest",
     "viem": "^2.0.0",
     "zod": "^3.23.0"
   },
