@@ -1,0 +1,11 @@
+{
+  "chainSelectorName": "slura-testnet",
+  "vezProxyAddress": "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+  "aggregatorAddress": "0xcccccccccccccccccccccccccccccccccccccccc",
+  "initialRecipient": "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+  "custodianAddress": "0x0000000000000000000000000000000000000000",
+  "vezReceiverAddress": "0x53ae54b11251d5003e9aa51422405bc35a2ef32d",
+  "forwarderAddress": "0xF8344CFd5c43616a4366C34E3EEE75af79a74482",
+  "schedule": "0 0 * * *",
+  "rpcUrl": "https://81af-168-253-182-87.ngrok-free.app"
+}

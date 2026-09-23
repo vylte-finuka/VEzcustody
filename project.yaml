@@ -1,0 +1,11 @@
+staging-settings:
+  rpcs:
+    - chain-name: slura-testnet
+      url: https://81af-168-253-182-87.ngrok-free.app
+      allow-unknown-chains: true
+
+production-settings:
+  rpcs:
+    - chain-name: slura-testnet
+      url: https://81af-168-253-182-87.ngrok-free.app
+      allow-unknown-chains: true

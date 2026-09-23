@@ -1,0 +1,38 @@
+{
+  "name": "vez-stablecoin-orchestrator",
+  "version": "1.0.0",
+  "description": "Chainlink CRE workflow for VEZ stablecoin orchestration on Slura chain (chainId 45057)",
+  "type": "module",
+  "main": "dist/workflow.js",
+  "scripts": {
+    "build": "tsc --noEmit",
+    "test": "jest",
+    "simulate": "cre workflow simulate . --target staging-settings --non-interactive --trigger-index 0 --broadcast --env .env --verbose --allow-insecure-rpc"
+  },
+  "keywords": [
+    "chainlink",
+    "cre",
+    "stablecoin",
+    "vez",
+    "slura"
+  ],
+  "author": "Vyft",
+  "license": "UNLICENSED",
+  "dependencies": {
+    "@chainlink/cre-sdk": "github:vylte-finuka/cre-sdk",
+    "viem": "^2.0.0",
+    "zod": "^3.23.0"
+  },
+  "devDependencies": {
+    "@jest/globals": "^29.7.0",
+    "@types/jest": "^30.0.0",
+    "@types/node": "^20.10.0",
+    "jest": "^30.5.2",
+    "ts-jest": "^29.4.12",
+    "typescript": "^5.9.3"
+  },
+  "engines": {
+    "node": ">=20",
+    "bun": ">=1.2.21"
+  }
+}
