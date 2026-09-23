@@ -6,7 +6,6 @@
   "main": "dist/workflow.js",
   "scripts": {
     "build": "tsc --noEmit",
-    "test": "jest",
     "simulate": "cre workflow simulate . --target staging-settings --non-interactive --trigger-index 0 --broadcast --env .env --verbose --allow-insecure-rpc"
   },
   "keywords": [
