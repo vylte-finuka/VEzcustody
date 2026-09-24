@@ -1,16 +1,15 @@
 {
   "name": "vez-stablecoin-orchestrator",
   "version": "1.0.0",
-  "description": "Chainlink CRE workflow for VEZ stablecoin orchestration on Slura chain (chainId 45057)",
-  "type": "module",
-  "main": "dist/workflow.js",
+  "description": "Next.js application for VEZ stablecoin orchestration on Slura chain (chainId 45057)",
   "scripts": {
-    "build": "tsc --noEmit",
-    "simulate": "cre workflow simulate . --target staging-settings --non-interactive --trigger-index 0 --broadcast --env .env --verbose --allow-insecure-rpc"
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
   },
   "keywords": [
-    "chainlink",
-    "cre",
+    "nextjs",
     "stablecoin",
     "vez",
     "slura"
@@ -18,21 +17,21 @@
   "author": "Vyft",
   "license": "UNLICENSED",
   "dependencies": {
-    "@chainlink/cre-sdk": "latest",
+    "next": "^14.0.0",
+    "react": "^18.0.0",
+    "react-dom": "^18.0.0",
     "viem": "^2.0.0",
     "zod": "^3.23.0"
   },
   "devDependencies": {
-    "@jest/globals": "^29.7.0",
-    "@types/jest": "^30.0.0",
     "@types/node": "^20.10.0",
-    "jest": "^30.5.2",
-    "ts-jest": "^29.4.12",
-    "ts-node": "latest",
-    "typescript": "^5.9.3"
+    "@types/react": "^18.0.0",
+    "@types/react-dom": "^18.0.0",
+    "typescript": "^5.9.3",
+    "eslint": "^8.0.0",
+    "eslint-config-next": "14.0.0"
   },
   "engines": {
-    "node": ">=20",
-    "bun": ">=1.2.21"
+    "node": ">=20"
   }
 }

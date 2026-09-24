@@ -1,0 +1,6 @@
+{
+  "/_not-found/page": "app/_not-found/page.js",
+  "/api/mint/route": "app/api/mint/route.js",
+  "/page": "app/page.js",
+  "/api/update-round/route": "app/api/update-round/route.js"
+}

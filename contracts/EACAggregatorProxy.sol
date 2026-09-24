@@ -57,12 +57,13 @@ contract EACAggregatorProxy is AggregatorV3Interface {
     }
 
     ///====≈====≈=== MISE À JOUR DES DONNÉES PoR
-    /// Seul le propriétaire (custodian / oracle) peut mettre à jour.
+    /// Seul le propriétaire (custodian / oracle) ou le contrat lui-même peut mettre à jour.
+    /// Permet les mises à jour automatiques (PoR automatique).
     function updateRoundData(
         int256 _answer,
         uint256 _timestamp
     ) external {
-        require(msg.sender == owner, "Only owner");
+        require(msg.sender == owner || msg.sender == address(this), "Only owner or self");
         require(_timestamp <= block.timestamp, "Future timestamp");
         require(_timestamp >= updatedAt, "Old timestamp");
 
@@ -110,6 +111,17 @@ contract EACAggregatorProxy is AggregatorV3Interface {
         )
     {
         return this.latestRoundData();
+    }
+
+    ///====≈====≈=== MISE À JOUR AUTOMATIQUE (PoR AUTOMATIQUE)
+    /// @notice Permet au contrat de se mettre à jour lui-même automatiquement.
+    ///         Utilisé pour le Proof of Reserve automatique sans intervention manuelle.
+    function autoUpdate(
+        int256 _answer,
+        uint256 _timestamp
+    ) external {
+        // Appel interne : le contrat s'appelle lui-même
+        this.updateRoundData(_answer, _timestamp);
     }
 
     ///====≈====≈=== ORACLE HEALTH
