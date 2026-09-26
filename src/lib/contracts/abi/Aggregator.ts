@@ -25,6 +25,16 @@ export const AGGREGATOR_ABI: Abi = [
     outputs: [],
   },
   {
+    name: 'autoUpdate',
+    type: 'function',
+    inputs: [
+      { name: '_answer', type: 'int256' },
+      { name: '_timestamp', type: 'uint256' },
+    ],
+    stateMutability: 'nonpayable',
+    outputs: [],
+  },
+  {
     name: 'latestRoundData',
     type: 'function',
     inputs: [],
