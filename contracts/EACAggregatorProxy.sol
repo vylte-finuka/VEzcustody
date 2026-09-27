@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-// Copyright (C) Vyft, SAS
+// Copyright (C) Vyft, Ltd
 
 pragma solidity ^0.8.26;
 
