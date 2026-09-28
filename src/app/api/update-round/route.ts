@@ -6,13 +6,13 @@ import { AGGREGATOR_ABI } from '@/lib/contracts/abi'
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
-    const { answer, timestamp } = body
+    const { answer } = body
 
-    if (answer === undefined || !timestamp) {
-      return NextResponse.json({ error: 'Missing answer or timestamp' }, { status: 400 })
+    if (answer === undefined) {
+      return NextResponse.json({ error: 'Missing answer' }, { status: 400 })
     }
 
-    const SLURA_RPC_URL = process.env.SLURA_RPC_URL || 'https://slu-charene.vyft-one.com'
+    const SLURA_RPC_URL = process.env.SLURA_RPC_URL || 'http://localhost:8081'
     const EAC_AGGREGATOR_ADDRESS = process.env.EAC_AGGREGATOR_ADDRESS as `0x${string}`
     const CUSTODIAN_PRIVATE_KEY = process.env.CUSTODIAN_PRIVATE_KEY as `0x${string}`
 
@@ -20,13 +20,16 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Server configuration error' }, { status: 500 })
     }
 
+    // Timestamp système (la chaîne Slura ne produit pas de blocs sans validateur)
+    const timestamp = Math.floor(Date.now() / 1000)
+
     const account = privateKeyToAccount(CUSTODIAN_PRIVATE_KEY)
     const walletClient = createWalletClient({
       account,
       chain: {
         id: 45057,
         name: 'Slura',
-        nativeCurrency: { name: 'ETH', symbol: 'ETH', decimals: 18 },
+        nativeCurrency: { name: 'VEZ', symbol: 'VEZ', decimals: 18 },
         rpcUrls: { default: { http: [SLURA_RPC_URL] } },
       } as const,
       transport: http(SLURA_RPC_URL),

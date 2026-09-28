@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { createPublicClient, http } from 'viem'
 import { VEZ_PROXY_ABI, AGGREGATOR_ABI } from '@/lib/contracts/abi'
 
-const SLURA_RPC_URL = process.env.NEXT_PUBLIC_SLURA_RPC_URL || 'https://slu-charene.vyft-one.com'
+const SLURA_RPC_URL = process.env.NEXT_PUBLIC_SLURA_RPC_URL || 'http://localhost:8081'
 const VEZ_PROXY_ADDRESS = (process.env.NEXT_PUBLIC_VEZ_PROXY_ADDRESS || '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee') as `0x${string}`
 const AGGREGATOR_ADDRESS = (process.env.NEXT_PUBLIC_AGGREGATOR_ADDRESS || '0xcccccccccccccccccccccccccccccccccccccccc') as `0x${string}`
 

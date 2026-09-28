@@ -1,6 +1,6 @@
 import { createPublicClient, http } from 'viem'
 
-const SLURA_RPC_URL = process.env.SLURA_RPC_URL || 'https://slu-charene.vyft-one.com'
+const SLURA_RPC_URL = process.env.SLURA_RPC_URL || 'http://localhost:8081'
 const AGGREGATOR_ADDRESS = process.env.AGGREGATOR_ADDRESS as `0x${string}`
 
 // ABI simplifié pour EACAggregatorProxy

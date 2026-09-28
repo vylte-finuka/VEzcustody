@@ -1,7 +1,7 @@
 import { createPublicClient, http } from 'viem'
 import { VEZ_PROXY_ABI } from './abi/VEZproxy'
 
-const SLURA_RPC_URL = process.env.SLURA_RPC_URL || 'https://slu-charene.vyft-one.com'
+const SLURA_RPC_URL = process.env.SLURA_RPC_URL || 'http://localhost:8081'
 const VEZ_PROXY_ADDRESS = process.env.VEZ_PROXY_ADDRESS as `0x${string}`
 
 export class VEZProxy {
