@@ -12,7 +12,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Missing recipient or amount' }, { status: 400 })
     }
 
-    const SLURA_RPC_URL = process.env.SLURA_RPC_URL || 'http://localhost:8081'
+    const SLURA_RPC_URL = process.env.SLURA_RPC_URL || 'https://slu-charene.vyft-one.com'
     const VEZ_PROXY_ADDRESS = process.env.VEZ_PROXY_ADDRESS as `0x${string}`
     const CUSTODIAN_PRIVATE_KEY = process.env.CUSTODIAN_PRIVATE_KEY as `0x${string}`
 

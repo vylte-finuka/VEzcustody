@@ -12,12 +12,16 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Missing answer' }, { status: 400 })
     }
 
-    const SLURA_RPC_URL = process.env.SLURA_RPC_URL || 'http://localhost:8081'
+    const SLURA_RPC_URL = process.env.SLURA_RPC_URL || 'https://slu-charene.vyft-one.com'
     const EAC_AGGREGATOR_ADDRESS = process.env.EAC_AGGREGATOR_ADDRESS as `0x${string}`
     const CUSTODIAN_PRIVATE_KEY = process.env.CUSTODIAN_PRIVATE_KEY as `0x${string}`
 
-    if (!EAC_AGGREGATOR_ADDRESS || !CUSTODIAN_PRIVATE_KEY) {
-      return NextResponse.json({ error: 'Server configuration error' }, { status: 500 })
+    if (!EAC_AGGREGATOR_ADDRESS || !EAC_AGGREGATOR_ADDRESS.startsWith('0x') || EAC_AGGREGATOR_ADDRESS.length !== 42) {
+      return NextResponse.json({ error: 'Invalid or missing EAC_AGGREGATOR_ADDRESS in environment variables' }, { status: 500 })
+    }
+
+    if (!CUSTODIAN_PRIVATE_KEY || !CUSTODIAN_PRIVATE_KEY.startsWith('0x') || CUSTODIAN_PRIVATE_KEY.length !== 66) {
+      return NextResponse.json({ error: 'Invalid or missing CUSTODIAN_PRIVATE_KEY in environment variables' }, { status: 500 })
     }
 
     // Timestamp système (la chaîne Slura ne produit pas de blocs sans validateur)

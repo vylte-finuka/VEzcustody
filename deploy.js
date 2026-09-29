@@ -15,7 +15,7 @@ if (!privateKey) {
 const account = privateKeyToAccount(privateKey);
 const client = createWalletClient({
   account,
-  transport: http('http://localhost:8081')
+  transport: http('https://slu-charene.vyft-one.com')
 });
 
 async function main() {

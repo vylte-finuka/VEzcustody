@@ -4,7 +4,7 @@ const nextConfig = {
   // Configuration pour le DON (Data Oracle Network) VEZ
   env: {
     NEXT_PUBLIC_SLURA_RPC_URL:
-      process.env.NEXT_PUBLIC_SLURA_RPC_URL || process.env.SLURA_RPC_URL || "http://localhost:8081",
+      process.env.NEXT_PUBLIC_SLURA_RPC_URL || process.env.SLURA_RPC_URL || "https://slu-charene.vyft-one.com",
     NEXT_PUBLIC_SLURA_CHAIN_ID: process.env.NEXT_PUBLIC_SLURA_CHAIN_ID || process.env.SLURA_CHAIN_ID || "45057",
     NEXT_PUBLIC_VEZ_PROXY_ADDRESS:
       process.env.NEXT_PUBLIC_VEZ_PROXY_ADDRESS || process.env.VEZ_PROXY_ADDRESS || "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
