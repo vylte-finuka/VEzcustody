@@ -1,0 +1,9 @@
+[build]
+  command = "npm run build"
+
+[build.environment]
+  # Public on-chain values (contract addresses, chain ID, RPC URL) are
+  # intentionally exposed to the browser via NEXT_PUBLIC_* in next.config.js,
+  # so they must not fail the secrets scan. Private keys and access tokens
+  # remain scanned.
+  SECRETS_SCAN_OMIT_KEYS = "SLURA_CHAIN_ID,SLURA_RPC_URL,VEZ_PROXY_ADDRESS,EAC_AGGREGATOR_ADDRESS,RESERVE_PROOF_ADDRESS,AGGREGATOR_ADDRESS,FORWARDER_ADDRESS,CUSTODIAN_ADDRESS,VEZ_RECEIVER_ADDRESS"
