@@ -24,3 +24,5 @@ npm-debug.log*
 
 # TypeScript
 *.tsbuildinfo
+# Next.js build output
+.next/
