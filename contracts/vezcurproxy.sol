@@ -39,23 +39,21 @@ contract VEZproxy is ERC20, Ownable, UUPSUpgradeable {
     uint256 private constant TRANSFER_BURN_PCT   = 10;
     uint256 private constant DISBURSE_BURN_PCT   = 10;
     uint256 private constant MAX_SAFE_AMOUNT     = type(uint256).max / 10;
-    uint256 public constant MAX_MINT_PER_TX      = 1_000_000 * 10**18;
+    uint256 public constant INITIAL_NATIVE_MINT = 888 * 10**18;
 
     ///====≈====≈=== VARIABLES
     reservVEZInterface public reserveProof;
 
-    uint256 public constant INITIAL_NATIVE_MINT = 88 * 10**18;
     bool public initialMintDone;
 
     mapping(address => bool) public custodians;  // Liste extensible de custodians (SLURC-2)
     address[] public custodianList;               // Tableau ordonné des custodians
 
-    string public currency = "EUR";
-    address public me;
+    string public currency = "";
     uint256 private complet_quantData;
 
     address public blacklister;
-    mapping(address => bool) private _blacklisted;
+    mapping(address => bool) private _disallowed;
     bool private _paused;
 
     address public validator; // Validateur autorisé à mint unlimited
@@ -76,11 +74,11 @@ contract VEZproxy is ERC20, Ownable, UUPSUpgradeable {
         uint256 burned
     );
 
-    event Blacklisted(
+    event Disallowed(
         address indexed account
     );
 
-    event UnBlacklisted(
+    event Allowed(
         address indexed account
     );
 
@@ -108,9 +106,10 @@ contract VEZproxy is ERC20, Ownable, UUPSUpgradeable {
         uint256 timestamp
     );
 
-    event MintLimited(
+    event MintWithBurn(
         address indexed to,
-        uint256 amount
+        uint256 amount,
+        uint256 burned
     );
 
     event FiatBackingConfirmed(
@@ -150,9 +149,6 @@ contract VEZproxy is ERC20, Ownable, UUPSUpgradeable {
             0x53Ae54b11251D5003e9aA51422405bC35A2eF32D
         );
 
-        me =
-            0x53Ae54b11251D5003e9aA51422405bC35A2eF32D;
-
         complet_quantData = 0;
 
         blacklister = owner();
@@ -163,10 +159,10 @@ contract VEZproxy is ERC20, Ownable, UUPSUpgradeable {
 
         // Mint initial native tokens (888M VEZ) for system validator
         if (!initialMintDone) {
-            _mint(me, INITIAL_NATIVE_MINT);
+            _mint(owner(), INITIAL_NATIVE_MINT);
             complet_quantData += INITIAL_NATIVE_MINT;
             initialMintDone = true;
-            emit MintLimited(me, INITIAL_NATIVE_MINT);
+            emit MintWithBurn(owner(), INITIAL_NATIVE_MINT, 0);
             emit FiatBackingConfirmed(INITIAL_NATIVE_MINT, "initial-native-mint");
         }
     }
@@ -195,8 +191,8 @@ contract VEZproxy is ERC20, Ownable, UUPSUpgradeable {
     }
 
     ///====≈====≈=== MINT – Automatisé par un custodian
-    /// Le montant minté doit être couvert par les réserves
-    /// EUR publiées par reservVEZ.
+    /// Le montant minté doit être couvert par les réserves EUR publiées par reservVEZ.
+    /// Le mint est aligné au PoR et un burn est appliqué si le PoR est inférieur au supply.
     ///====≈====≈===
     function mint(
         address to,
@@ -225,29 +221,40 @@ contract VEZproxy is ERC20, Ownable, UUPSUpgradeable {
             "Token paused"
         );
 
-        // Après le mint initial, aligner au PoR
-        if (complet_quantData == INITIAL_NATIVE_MINT) {
-            // Validateur peut mint illimité (sauf limite MAX_MINT_PER_TX)
-            require(
-                msg.sender == validator,
-                "Only validator can mint unlimited"
-            );
+        // Vérifier le PoR et calculer le burn si nécessaire
+        uint256 currentSupply = complet_quantData + amount;
+        uint256 reserveEUR = reserveProof.reserveValueEUR();
+        
+        uint256 burnAmount = 0;
+        
+        // Si le supply après mint dépasse les réserves, on brûle la différence
+        if (currentSupply > reserveEUR) {
+            burnAmount = currentSupply - reserveEUR;
+            // S'assurer que burnAmount ne dépasse pas le montant à mint
+            if (burnAmount > amount) {
+                burnAmount = amount;
+            }
         }
 
+        // Mint du montant net après burn
+        uint256 netMint = amount - burnAmount;
+        
         _mint(
             to,
-            amount
+            netMint
         );
 
-        complet_quantData += amount;
+        // Mise à jour du supply : le burn est déjà soustrait du mint
+        complet_quantData += netMint;
 
-        emit MintLimited(
+        emit MintWithBurn(
             to,
-            amount
+            netMint,
+            burnAmount
         );
 
         emit FiatBackingConfirmed(
-            amount,
+            netMint,
             "verified-proof-of-reserves"
         );
     }
@@ -269,8 +276,8 @@ contract VEZproxy is ERC20, Ownable, UUPSUpgradeable {
         );
 
         require(
-            !_blacklisted[msg.sender],
-            "Blacklisted"
+            !_disallowed[msg.sender],
+            "Disallowed"
         );
 
         _burn(
@@ -303,9 +310,9 @@ contract VEZproxy is ERC20, Ownable, UUPSUpgradeable {
         returns (bool)
     {
         require(
-            !_blacklisted[msg.sender] &&
-            !_blacklisted[to],
-            "Blacklisted"
+            !_disallowed[msg.sender] &&
+            !_disallowed[to],
+            "Disallowed"
         );
 
         require(
@@ -357,9 +364,9 @@ contract VEZproxy is ERC20, Ownable, UUPSUpgradeable {
         returns (bool)
     {
         require(
-            !_blacklisted[from] &&
-            !_blacklisted[to],
-            "Blacklisted"
+            !_disallowed[from] &&
+            !_disallowed[to],
+            "Disallowed"
         );
 
         require(
@@ -439,7 +446,7 @@ contract VEZproxy is ERC20, Ownable, UUPSUpgradeable {
 
     ///====≈====≈=== RELAYED PoS & REWARDS
     function relay_master(
-        address validator,
+        address _validator,
         uint256 delegatedAmount
     )
         external
@@ -447,10 +454,10 @@ contract VEZproxy is ERC20, Ownable, UUPSUpgradeable {
         returns (uint256)
     {
         totalRelayPower -=
-            validatorRelayPower[validator];
+            validatorRelayPower[_validator];
 
         uint256 newPower =
-            balanceOf(validator) +
+            balanceOf(_validator) +
             delegatedAmount;
 
         validatorRelayPower[validator] =
@@ -508,28 +515,28 @@ contract VEZproxy is ERC20, Ownable, UUPSUpgradeable {
     }
 
     ///====≈====≈=== BLACKLIST & PAUSE
-    function blacklist(
+    function disallow(
         address account
     )
         external
         onlyOwner
     {
-        _blacklisted[account] = true;
+        _disallowed[account] = true;
 
-        emit Blacklisted(
+        emit Disallowed(
             account
         );
     }
 
-    function unBlacklist(
+    function allow(
         address account
     )
         external
         onlyOwner
     {
-        _blacklisted[account] = false;
+        _disallowed[account] = false;
 
-        emit UnBlacklisted(
+        emit Allowed(
             account
         );
     }
@@ -685,12 +692,127 @@ contract VEZproxy is ERC20, Ownable, UUPSUpgradeable {
         return complet_quantData;
     }
 
+    ///====≈====≈=== SLURC-20: GESTION DES COMPTES (asset_impl.rs pattern)
+    ///====≈====≈===
+
+    // Structures de données SLURC-20
+    struct AssetConfig {
+        uint8 precision;
+        string ticker;
+        string title;
+    }
+
+    struct AssetEvents {
+        bool initialized;
+    }
+
+    // Stockage des configurations par compte
+    mapping(address => AssetConfig) public accountConfigs;
+    mapping(address => AssetEvents) private accountEventsData;
+
+    /// Crée un compte avec un solde initial de zéro
+    /// Conforme à asset_impl.rs create_account()
+    function create_account(address account) public {
+        require(account != address(0), "Invalid account");
+        require(!isAccountCreated(account), "already_exists(1)");
+        
+        // Initialiser la configuration par défaut
+        accountConfigs[account] = AssetConfig({
+            precision: 18,
+            ticker: "VEZ",
+            title: "Vyft Enhancing ZER"
+        });
+        
+        // Initialiser les events (vide pour l'instant)
+        accountEventsData[account] = AssetEvents({
+            initialized: true
+        });
+    }
+
+    /// Vérifie si un compte existe
+    function isAccountCreated(address account) public view returns (bool) {
+        return bytes(accountConfigs[account].ticker).length > 0 || balanceOf(account) > 0;
+    }
+
+    /// Retourne le solde d'un compte (alias de balanceOf)
+    /// Conforme à asset_impl.rs solde_of()
+    function solde_of(address account) public view returns (uint256) {
+        return balanceOf(account);
+    }
+
+    /// Retourne le total supply pour un compte spécifique
+    /// Conforme à asset_impl.rs complet_quant_val()
+    function complet_quant_val(address account) public view returns (uint256) {
+        require(isAccountCreated(account), "not_found(1)");
+        // Pour VEZproxy, le complet_quant_val est le même pour tous les comptes
+        // (c'est le total supply du contrat)
+        return complet_quantData;
+    }
+
+    /// Retourne le ticker d'un compte
+    /// Conforme à asset_impl.rs get_ticker()
+    function get_ticker(address account) public view returns (string memory) {
+        return accountConfigs[account].ticker;
+    }
+
+    /// Retourne la précision d'un compte
+    /// Conforme à asset_impl.rs get_precision()
+    function get_precision(address account) public view returns (uint8) {
+        return accountConfigs[account].precision;
+    }
+
+    /// Retourne le titre d'un compte
+    /// Conforme à asset_impl.rs get_title()
+    function get_title(address account) public view returns (string memory) {
+        return accountConfigs[account].title;
+    }
+
+    /// Approuve un payer pour un montant donné
+    /// Conforme à asset_impl.rs approve()
+    function approve(address payer, uint256 value) public override returns (bool) {
+        require(isAccountCreated(msg.sender), "not_found(1)");
+        return super.approve(payer, value);
+    }
+
+    /// Transfère des tokens depuis un compte approuvé
+    /// Conforme à asset_impl.rs deliver_from()
+    function deliver_from(address from, address to, uint256 value) public {
+        require(isAccountCreated(from), "not_found(1)");
+        require(isAccountCreated(to), "not_found(2)");
+        
+        // Vérifier l'approbation
+        uint256 currentAllowance = allowance(from, msg.sender);
+        require(currentAllowance >= value, "invalid_argument(6)");
+        
+        // Exécuter le transfert
+        _transfer(from, to, value);
+        
+        // Mettre à jour l'approbation
+        _approve(from, msg.sender, currentAllowance - value);
+    }
+
+    /// Brûle des tokens depuis un compte approuvé
+    /// Conforme à asset_impl.rs burn_from()
+    function burn_from(address account, uint256 value) public {
+        require(isAccountCreated(account), "not_found(1)");
+        
+        // Vérifier l'approbation
+        uint256 currentAllowance = allowance(account, msg.sender);
+        require(currentAllowance >= value, "invalid_argument(4)");
+        
+        // Brûler les tokens
+        _burn(account, value);
+        
+        // Mettre à jour l'approbation
+        _approve(account, msg.sender, currentAllowance - value);
+    }
+
     ///====≈====≈=== INFORMATIONS PoR
     function getReserveStatus()
         external
         view
         returns (
-            uint256 reserveEUR,
+            uint256 reserveValue,
             uint256 supplyVEZ,
             uint256 availableMint,
             bool solvent,
@@ -698,7 +820,7 @@ contract VEZproxy is ERC20, Ownable, UUPSUpgradeable {
             bytes32 proofHash
         )
     {
-        reserveEUR =
+        reserveValue =
             reserveProof.reserveValueEUR();
 
         supplyVEZ =

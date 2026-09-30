@@ -3,8 +3,8 @@ import type { ReactNode } from 'react'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'VEZ Stablecoin Dashboard',
-  description: 'VEZ Stablecoin Proof of Reserve Dashboard',
+  title: 'VEZ Stablecoin — Proof of Reserves',
+  description: 'VEZ Stablecoin Proof of Reserves Dashboard on Slura Chain',
 }
 
 export default function RootLayout({
@@ -13,8 +13,10 @@ export default function RootLayout({
   children: ReactNode
 }) {
   return (
-    <html lang="en">
-      <body>{children}</body>
+    <html lang="fr">
+      <body className="min-h-screen bg-slate-900 text-white">
+        {children}
+      </body>
     </html>
   )
 }
