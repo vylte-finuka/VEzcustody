@@ -29,7 +29,7 @@
     "@types/react-dom": "^18.0.0",
     "typescript": "^5.9.3",
     "eslint": "^8.0.0",
-    "eslint-config-next": "14.0.0"
+    "eslint-config-next": "14.2.35"
   },
   "engines": {
     "node": ">=20",
