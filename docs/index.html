@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>VEZ Stablecoin — Proof of Reserves</title>
+  <style>
+    :root { color-scheme: dark; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
+      color: #f8fafc; min-height: 100vh;
+    }
+    header {
+      border-bottom: 1px solid #334155; background: rgba(15,23,42,.85); backdrop-filter: blur(8px);
+      padding: 1rem 1.25rem; display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap;
+    }
+    .brand { display: flex; align-items: center; gap: .75rem; }
+    .logo {
+      width: 2.5rem; height: 2.5rem; border-radius: 999px; background: #2563eb;
+      display: grid; place-items: center; font-weight: 700;
+    }
+    h1 { margin: 0; font-size: 1.15rem; }
+    .sub { margin: 0; font-size: .75rem; color: #94a3b8; }
+    .status { display: flex; align-items: center; gap: .5rem; font-size: .9rem; color: #cbd5e1; }
+    .dot { width: .5rem; height: .5rem; border-radius: 999px; background: #ef4444; }
+    .dot.ok { background: #22c55e; }
+    main { max-width: 72rem; margin: 0 auto; padding: 2rem 1rem; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1.25rem; margin-bottom: 1.5rem; }
+    .card {
+      background: rgba(30,41,59,.55); border: 1px solid #334155; border-radius: 1rem; padding: 1.25rem;
+    }
+    .card label { display: block; font-size: .85rem; color: #94a3b8; margin-bottom: .5rem; }
+    .card .val { font-size: 1.75rem; font-weight: 700; color: #60a5fa; }
+    .card .val.green { color: #4ade80; }
+    .card .val.red { color: #f87171; }
+    .card .hint { font-size: .75rem; color: #64748b; margin-top: .35rem; }
+    h2 { margin: 0 0 1rem; font-size: 1.05rem; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .75rem; word-break: break-all; color: #93c5fd; }
+    .muted { color: #94a3b8; font-size: .8rem; }
+    table { width: 100%; border-collapse: collapse; font-size: .85rem; }
+    td { padding: .4rem 0; border-bottom: 1px solid #33415588; }
+    td:last-child { text-align: right; white-space: nowrap; }
+    .warn {
+      background: rgba(120,53,15,.25); border: 1px solid #b4532888; border-radius: 1rem;
+      padding: 1rem; margin: 1rem 0; font-size: .8rem; color: #fde68a;
+    }
+    .err {
+      background: rgba(127,29,29,.3); border: 1px solid #b91c1c88; border-radius: 1rem;
+      padding: 1rem; margin: 1rem 0; font-size: .85rem; color: #fca5a5;
+    }
+    button {
+      background: transparent; border: 1px solid #475569; color: #e2e8f0; border-radius: .4rem;
+      padding: .25rem .6rem; font-size: .75rem; cursor: pointer;
+    }
+    button:hover { background: #1e293b; }
+    footer { text-align: center; color: #64748b; font-size: .8rem; margin-top: 1.5rem; }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="brand">
+      <div class="logo">VEZ</div>
+      <div>
+        <h1>VEZ Stablecoin</h1>
+        <p class="sub">Proof of Reserves — Slura Chain (EUR)</p>
+      </div>
+    </div>
+    <div class="status">
+      <span class="dot" id="dot"></span>
+      <span id="statusLabel">Chargement…</span>
+      <button type="button" id="refreshBtn">Refresh</button>
+    </div>
+  </header>
+  <main>
+    <div class="grid">
+      <div class="card">
+        <label>Total VEZ Supply</label>
+        <div class="val" id="supply">—</div>
+        <div class="hint" id="supplySrc">VEZ</div>
+      </div>
+      <div class="card">
+        <label>Reserve Backing</label>
+        <div class="val green" id="reserve">—</div>
+        <div class="hint">EUR equivalent (oracle answer)</div>
+      </div>
+      <div class="card">
+        <label>Reserve Ratio</label>
+        <div class="val red" id="ratio">—%</div>
+        <div class="hint" id="ratioHint">1 VEZ backed</div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:1.5rem">
+      <h2>Contract Information</h2>
+      <div class="grid">
+        <div>
+          <div class="muted">Custodian (mint holder)</div>
+          <div class="mono" id="custodian">—</div>
+          <div class="muted" id="custBal"></div>
+        </div>
+        <div>
+          <div class="muted">Proxy Contract</div>
+          <div class="mono" id="proxy">—</div>
+        </div>
+        <div>
+          <div class="muted">Aggregator (PoR oracle)</div>
+          <div class="mono" id="agg">—</div>
+          <div class="muted" id="aggState"></div>
+        </div>
+        <div>
+          <div class="muted">Chaîne</div>
+          <div id="chain">Slura (ID: 45057) — EUR</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:1.5rem">
+      <h2>Soldes natifs (eth_getBalance)</h2>
+      <table><tbody id="balances"></tbody></table>
+    </div>
+
+    <div class="err" id="error" hidden></div>
+    <div class="warn" id="warnings" hidden></div>
+
+    <footer>
+      <div>Dernière mise à jour : <span id="updated">—</span></div>
+      <div>Sources : <span id="sources">—</span> · RPC direct navigateur</div>
+    </footer>
+  </main>
+  <script>
+(function () {
+  const RPC = 'https://slu-charene.vyft-one.com';
+  const VEZ = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
+  const AGG = '0xcccccccccccccccccccccccccccccccccccccccc';
+  const CUSTODIAN = '0x53ae54b11251d5003e9aa51422405bc35a2ef32d';
+
+  async function rpc(method, params) {
+    const res = await fetch(RPC, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ jsonrpc: '2.0', method, params, id: 1 }),
+    });
+    if (!res.ok) throw new Error('RPC HTTP ' + res.status);
+    const json = await res.json();
+    if (json.error) throw new Error(json.error.message || 'RPC error');
+    return json.result;
+  }
+
+  function hexToBigInt(hex) {
+    if (!hex || hex === '0x') return 0n;
+    return BigInt(hex);
+  }
+
+  function formatVez(wei) {
+    const whole = wei / 10n ** 18n;
+    const frac = wei % 10n ** 18n;
+    if (frac === 0n) return whole.toLocaleString('fr-FR');
+    const f = frac.toString().padStart(18, '0').replace(/0+$/, '');
+    return whole.toLocaleString('fr-FR') + '.' + f;
+  }
+
+  function isValidCall(hex, maxWords) {
+    if (typeof hex !== 'string' || !hex.startsWith('0x') || hex.length < 66) return false;
+    const body = hex.slice(2);
+    if (body.length > 64 * (maxWords || 8)) return false;
+    if (body.startsWith('60806040') || body.startsWith('575f5ffd')) return false;
+    return true;
+  }
+
+  async function load() {
+    const warnings = [];
+    const sources = [];
+    document.getElementById('error').hidden = true;
+
+    try {
+      const chainId = parseInt(await rpc('eth_chainId', []), 16);
+      document.getElementById('chain').textContent = 'Slura (ID: ' + chainId + ') — EUR';
+
+      const holders = new Set([CUSTODIAN.toLowerCase(), VEZ.toLowerCase()]);
+      try {
+        const accounts = await rpc('eth_accounts', []);
+        (accounts || []).forEach(a => holders.add(a.toLowerCase()));
+      } catch (_) {}
+
+      const balances = {};
+      let sum = 0n;
+      for (const addr of holders) {
+        try {
+          const bal = hexToBigInt(await rpc('eth_getBalance', [addr, 'latest']));
+          balances[addr] = formatVez(bal);
+          sum += bal;
+        } catch (_) {
+          balances[addr] = '0';
+        }
+      }
+
+      let totalSupply = sum;
+      let supplySource = sum > 0n ? 'eth_getBalance(sum)' : 'none';
+      if (sum > 0n) sources.push('native balances');
+
+      try {
+        const ts = await rpc('eth_call', [{ to: VEZ, data: '0x18160ddd' }, 'latest']);
+        if (isValidCall(ts, 1)) {
+          const v = hexToBigInt(ts);
+          if (v > 0n) {
+            totalSupply = v;
+            supplySource = 'totalSupply()';
+            sources.push('totalSupply');
+          }
+        } else {
+          warnings.push('eth_call totalSupply() invalide — solde natif utilisé');
+        }
+      } catch (e) {
+        warnings.push('totalSupply: ' + (e.message || e));
+      }
+
+      let reserve = 0n;
+      let oracleDeployed = false;
+      let aggregator = AGG;
+      try {
+        const code = await rpc('eth_getCode', [AGG, 'latest']);
+        oracleDeployed = !!(code && code !== '0x' && code.length > 4);
+      } catch (_) {
+        warnings.push('eth_getCode oracle échoué');
+      }
+
+      async function tryRound(addr) {
+        for (const data of ['0xfeaf968c', '0x4cf0d314']) {
+          try {
+            const raw = await rpc('eth_call', [{ to: addr, data }, 'latest']);
+            if (!isValidCall(raw, 5)) continue;
+            const body = raw.slice(2);
+            if (body.length < 320) continue;
+            const words = body.match(/.{64}/g) || [];
+            return BigInt('0x' + words[1]);
+          } catch (_) {}
+        }
+        return null;
+      }
+
+      if (oracleDeployed) {
+        const ans = await tryRound(AGG);
+        if (ans !== null) { reserve = ans; sources.push('oracle'); }
+        else warnings.push('Oracle déployé mais round data illisible');
+      } else {
+        warnings.push('Oracle non déployé à ' + AGG);
+        const ans = await tryRound(VEZ);
+        if (ans !== null) {
+          reserve = ans; aggregator = VEZ; oracleDeployed = true;
+          sources.push('oracle@vez');
+        }
+      }
+
+      let ratio = 0;
+      if (totalSupply > 0n && reserve > 0n) {
+        ratio = Number((reserve * 10000n) / totalSupply) / 100;
+      }
+      const isBacked = ratio >= 99.5;
+      const status = isBacked ? 'Fully Backed' : (reserve > 0n ? 'Partial' : 'Under Backed / No Oracle');
+
+      document.getElementById('supply').textContent = formatVez(totalSupply);
+      document.getElementById('supplySrc').textContent = 'VEZ · via ' + supplySource;
+      document.getElementById('reserve').textContent = formatVez(reserve);
+      const ratioEl = document.getElementById('ratio');
+      ratioEl.textContent = ratio.toFixed(2) + '%';
+      ratioEl.className = 'val ' + (isBacked ? 'green' : 'red');
+      document.getElementById('ratioHint').textContent = '1 VEZ = ' + ratio.toFixed(2) + '% EUR backed';
+      document.getElementById('statusLabel').textContent = status;
+      document.getElementById('dot').className = 'dot' + (isBacked ? ' ok' : '');
+      document.getElementById('custodian').textContent = CUSTODIAN;
+      document.getElementById('custBal').textContent = 'Balance: ' + (balances[CUSTODIAN.toLowerCase()] || '0') + ' VEZ';
+      document.getElementById('proxy').textContent = VEZ;
+      document.getElementById('agg').textContent = aggregator;
+      document.getElementById('aggState').textContent = oracleDeployed ? 'Déployé' : 'Non déployé / eth_call KO';
+
+      const tbody = document.getElementById('balances');
+      tbody.innerHTML = '';
+      Object.keys(balances).sort().forEach(addr => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = '<td class="mono">' + addr + '</td><td>' + balances[addr] + ' VEZ</td>';
+        tbody.appendChild(tr);
+      });
+
+      if (warnings.length) {
+        const w = document.getElementById('warnings');
+        w.hidden = false;
+        w.innerHTML = '<strong>Avertissements</strong><ul>' + warnings.map(x => '<li>' + x + '</li>').join('') + '</ul>';
+      } else {
+        document.getElementById('warnings').hidden = true;
+      }
+
+      document.getElementById('updated').textContent = new Date().toLocaleString('fr-FR');
+      document.getElementById('sources').textContent = sources.join(', ') || '—';
+    } catch (e) {
+      document.getElementById('error').hidden = false;
+      document.getElementById('error').textContent = e.message || String(e);
+      document.getElementById('statusLabel').textContent = 'Erreur';
+    }
+  }
+
+  document.getElementById('refreshBtn').addEventListener('click', load);
+  load();
+  setInterval(load, 30000);
+})();
+  </script>
+</body>
+</html>
