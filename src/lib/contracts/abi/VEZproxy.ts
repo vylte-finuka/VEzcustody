@@ -1,5 +1,6 @@
 import type { Abi } from 'viem'
 
+/** ABI minimal aligné sur vezcurproxy.sol (VEZproxy) */
 export const VEZ_PROXY_ABI: Abi = [
   {
     name: 'mint',
@@ -19,7 +20,7 @@ export const VEZ_PROXY_ABI: Abi = [
       { name: 'amount', type: 'uint256' },
     ],
     stateMutability: 'nonpayable',
-    outputs: [],
+    outputs: [{ name: '', type: 'bool' }],
   },
   {
     name: 'obtain',
@@ -44,5 +45,40 @@ export const VEZ_PROXY_ABI: Abi = [
     inputs: [],
     stateMutability: 'view',
     outputs: [{ name: '', type: 'uint256' }],
+  },
+  {
+    name: 'owner',
+    type: 'function',
+    inputs: [],
+    stateMutability: 'view',
+    outputs: [{ name: '', type: 'address' }],
+  },
+  {
+    name: 'me',
+    type: 'function',
+    inputs: [],
+    stateMutability: 'view',
+    outputs: [{ name: '', type: 'address' }],
+  },
+  {
+    name: 'priceFeed',
+    type: 'function',
+    inputs: [],
+    stateMutability: 'view',
+    outputs: [{ name: '', type: 'address' }],
+  },
+  {
+    name: 'complet_quant',
+    type: 'function',
+    inputs: [],
+    stateMutability: 'view',
+    outputs: [{ name: '', type: 'uint256' }],
+  },
+  {
+    name: 'isCustodian',
+    type: 'function',
+    inputs: [{ name: 'account', type: 'address' }],
+    stateMutability: 'view',
+    outputs: [{ name: '', type: 'bool' }],
   },
 ] as const
