@@ -1,82 +1,94 @@
 import { NextRequest, NextResponse } from 'next/server'
 import {
-  createPublicClient,
-  createWalletClient,
   http,
+  createWalletClient,
+  createPublicClient,
   parseUnits,
   formatUnits,
   encodeFunctionData,
   type Hex,
-  type Chain,
+  type Address,
 } from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'
-import { VEZ_PROXY_ABI, AGGREGATOR_ABI } from '../../../lib/contracts/abi'
+import { VEZ_PROXY_ABI } from '../../../lib/contracts/abi'
 
 const RPC = process.env.SLURA_RPC_URL || 'https://slu-charene.vyft-one.com'
 const VEZ = (process.env.VEZ_PROXY_ADDRESS ||
-  '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee') as `0x${string}`
+  '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee') as Address
 const ORACLE = (process.env.EAC_AGGREGATOR_ADDRESS ||
-  process.env.EAC_PROXY_AGGREGATOR_ADDRESS ||
-  '0xcccccccccccccccccccccccccccccccccccccccc') as `0x${string}`
-const CUSTODIAN = (process.env.CUSTODIAN_ADDRESS ||
-  '0x53ae54b11251d5003e9aa51422405bc35a2ef32d').toLowerCase()
+  '0xcccccccccccccccccccccccccccccccccccccccc') as Address
+const CUSTODIAN = (
+  process.env.CUSTODIAN_ADDRESS ||
+  '0x53ae54b11251d5003e9aa51422405bc35a2ef32d'
+).toLowerCase()
 
-const SLURA_CHAIN = {
+/** Minimal chain definition — no `satisfies Chain` (avoids Netlify TS break) */
+const SLURA = {
   id: 45057,
-  name: 'Slura Charène',
+  name: 'Slura',
   nativeCurrency: { name: 'VEZ', symbol: 'VEZ', decimals: 18 },
-  rpcUrls: { default: { http: [RPC] } },
-} as const satisfies Chain
+  rpcUrls: { default: { http: [RPC] as const }, public: { http: [RPC] as const } },
+} as const
 
-function publicClient() {
-  return createPublicClient({ chain: SLURA_CHAIN, transport: http(RPC) })
+async function rpc<T = unknown>(method: string, params: unknown[] = []): Promise<T> {
+  const res = await fetch(RPC, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ jsonrpc: '2.0', id: 1, method, params }),
+    cache: 'no-store',
+  })
+  if (!res.ok) throw new Error(`RPC HTTP ${res.status}`)
+  const json = (await res.json()) as { result?: T; error?: { message?: string } }
+  if (json.error) throw new Error(json.error.message || 'RPC error')
+  return json.result as T
 }
 
-async function readReserveAndSupply() {
-  const client = publicClient()
-  let reserveWei = 0n
-  let roundId: string | null = null
-  let updatedAt: string | null = null
+function hexToBigInt(hex: string | undefined | null): bigint {
+  if (!hex || hex === '0x' || hex === '0x0') return 0n
+  return BigInt(hex)
+}
+
+/** latestRoundData() → answer (EUR * 1e18) */
+async function readOracleReserve(): Promise<{
+  reserveWei: bigint
+  roundId: string
+  updatedAt: number
+}> {
+  // selector 0xfeaf968c
+  const data = await rpc<string>('eth_call', [
+    { to: ORACLE, data: '0xfeaf968c' },
+    'latest',
+  ])
+  if (!data || data === '0x' || data.length < 2 + 64 * 5) {
+    throw new Error('Oracle latestRoundData empty/invalid')
+  }
+  const h = data.slice(2)
+  const word = (i: number) => BigInt('0x' + h.slice(i * 64, i * 64 + 64))
+  const roundId = word(0)
+  let answer = word(1)
+  // int256 negative → two's complement (unlikely for EUR reserve)
+  if (answer > 2n ** 255n) {
+    answer = answer - 2n ** 256n
+  }
+  const reserveWei = answer < 0n ? -answer : answer
+  const updatedAt = Number(word(3))
+  return { reserveWei, roundId: roundId.toString(), updatedAt }
+}
+
+async function readSupply(): Promise<bigint> {
   try {
-    const round = (await client.readContract({
-      address: ORACLE,
-      abi: AGGREGATOR_ABI,
-      functionName: 'latestRoundData',
-    })) as readonly [bigint, bigint, bigint, bigint, bigint]
-    const ans = round[1]
-    reserveWei = ans < 0n ? -ans : ans
-    roundId = round[0].toString()
-    updatedAt = new Date(Number(round[3]) * 1000).toISOString()
-  } catch (e) {
-    throw new Error(
-      `Oracle EAC unread: ${e instanceof Error ? e.message : String(e)}`
+    const data = await rpc<string>('eth_call', [
+      { to: VEZ, data: '0x18160ddd' },
+      'latest',
+    ])
+    return hexToBigInt(data)
+  } catch {
+    return hexToBigInt(
+      await rpc<string>('eth_getBalance', [CUSTODIAN, 'latest'])
     )
   }
-
-  let supplyWei = 0n
-  try {
-    supplyWei = (await client.readContract({
-      address: VEZ,
-      abi: VEZ_PROXY_ABI,
-      functionName: 'totalSupply',
-    })) as bigint
-  } catch {
-    try {
-      supplyWei = await client.getBalance({
-        address: CUSTODIAN as `0x${string}`,
-      })
-    } catch {
-      supplyWei = 0n
-    }
-  }
-
-  const available =
-    reserveWei > supplyWei ? reserveWei - supplyWei : 0n
-
-  return { reserveWei, supplyWei, available, roundId, updatedAt }
 }
 
-/** Health / readiness — production status for issuance terminal */
 export async function GET() {
   try {
     const pk = process.env.CUSTODIAN_PRIVATE_KEY
@@ -84,20 +96,42 @@ export async function GET() {
     let signer: string | null = null
     if (keyConfigured) {
       try {
-        signer = privateKeyToAccount(pk as `0x${string}`).address
+        signer = privateKeyToAccount(pk as Hex).address
       } catch {
         signer = null
       }
     }
 
-    const { reserveWei, supplyWei, available, roundId, updatedAt } =
-      await readReserveAndSupply()
+    let reserveWei = 0n
+    let supplyWei = 0n
+    let roundId: string | null = null
+    let oracleOk = false
+    try {
+      const o = await readOracleReserve()
+      reserveWei = o.reserveWei
+      roundId = o.roundId
+      oracleOk = true
+    } catch (e) {
+      return NextResponse.json({
+        ok: false,
+        ready: false,
+        issuance: 'oracle_down',
+        error: e instanceof Error ? e.message : String(e),
+        keyConfigured,
+        rpc: RPC,
+        vez: VEZ,
+        oracle: ORACLE,
+      })
+    }
+    try {
+      supplyWei = await readSupply()
+    } catch {
+      supplyWei = 0n
+    }
 
+    const available = reserveWei > supplyWei ? reserveWei - supplyWei : 0n
     const ready =
-      keyConfigured &&
-      signer !== null &&
-      reserveWei > 0n &&
-      available > 0n
+      keyConfigured && !!signer && oracleOk && available > 0n
 
     return NextResponse.json({
       ok: true,
@@ -117,17 +151,13 @@ export async function GET() {
       totalSupply: formatUnits(supplyWei, 18),
       availableToMint: formatUnits(available, 18),
       roundId,
-      oracleUpdatedAt: updatedAt,
       requirements: [
-        !keyConfigured && 'Set CUSTODIAN_PRIVATE_KEY on Netlify',
+        !keyConfigured && 'Set CUSTODIAN_PRIVATE_KEY on Netlify + redeploy',
         keyConfigured &&
           signer &&
           signer.toLowerCase() !== CUSTODIAN &&
           `Signer ${signer} ≠ custodian ${CUSTODIAN}`,
-        reserveWei === 0n && 'Oracle reserve is 0 — update EAC round',
-        available === 0n &&
-          reserveWei > 0n &&
-          'No headroom: supply already equals/exceeds EUR reserve',
+        available === 0n && 'No mint headroom vs EUR reserve',
       ].filter(Boolean),
     })
   } catch (e) {
@@ -149,25 +179,25 @@ export async function POST(req: NextRequest) {
     const recipient = (body.recipient || body.to || '').toString().trim()
     const amountRaw = body.amount ?? body.value
 
-    if (!recipient || !/^0x[a-fA-F0-9]{40}$/.test(recipient)) {
+    if (!recipient || !/^0x[a-fA-F0-9]{40}$/i.test(recipient)) {
       return NextResponse.json(
-        { error: 'Missing or invalid recipient (0x… address)' },
+        { error: 'Missing or invalid recipient', code: 'BAD_RECIPIENT' },
         { status: 400 }
       )
     }
     if (amountRaw === undefined || amountRaw === null || amountRaw === '') {
       return NextResponse.json(
-        { error: 'Missing amount (VEZ human units, e.g. "1" or "0.5")' },
+        { error: 'Missing amount', code: 'BAD_AMOUNT' },
         { status: 400 }
       )
     }
 
-    const pk = process.env.CUSTODIAN_PRIVATE_KEY as `0x${string}` | undefined
+    const pk = process.env.CUSTODIAN_PRIVATE_KEY as Hex | undefined
     if (!pk || !pk.startsWith('0x') || pk.length < 66) {
       return NextResponse.json(
         {
           error:
-            'Issuance terminal not configured: set CUSTODIAN_PRIVATE_KEY (0x…) in Netlify env and redeploy',
+            'Issuance not configured: set CUSTODIAN_PRIVATE_KEY in Netlify env, then redeploy',
           code: 'NO_CUSTODIAN_KEY',
         },
         { status: 503 }
@@ -181,19 +211,26 @@ export async function POST(req: NextRequest) {
           ? BigInt(String(amountRaw))
           : parseUnits(String(amountRaw), 18)
     } catch {
-      return NextResponse.json({ error: 'Invalid amount' }, { status: 400 })
+      return NextResponse.json(
+        { error: 'Invalid amount', code: 'BAD_AMOUNT' },
+        { status: 400 }
+      )
     }
     if (amountWei <= 0n) {
-      return NextResponse.json({ error: 'Amount must be > 0' }, { status: 400 })
+      return NextResponse.json(
+        { error: 'Amount must be > 0', code: 'BAD_AMOUNT' },
+        { status: 400 }
+      )
     }
 
-    const { reserveWei, supplyWei, available, roundId } =
-      await readReserveAndSupply()
+    const { reserveWei, roundId } = await readOracleReserve()
+    const supplyWei = await readSupply()
+    const available = reserveWei > supplyWei ? reserveWei - supplyWei : 0n
 
     if (amountWei > available) {
       return NextResponse.json(
         {
-          error: 'Mint exceeds EUR reserve backing (1:1 PoR)',
+          error: 'Mint exceeds EUR reserve (1:1 PoR)',
           code: 'INSUFFICIENT_RESERVE',
           reserveEUR: formatUnits(reserveWei, 18),
           currentSupply: formatUnits(supplyWei, 18),
@@ -215,47 +252,71 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    const walletClient = createWalletClient({
-      account,
-      chain: SLURA_CHAIN,
-      transport: http(RPC),
-    })
-
     const data = encodeFunctionData({
       abi: VEZ_PROXY_ABI,
       functionName: 'mint',
-      args: [recipient as `0x${string}`, amountWei],
+      args: [recipient as Address, amountWei],
+    })
+
+    // Fixed gas — skip eth_estimateGas (often broken on custom VMs)
+    const gas = 500_000n
+    const gasPrice = hexToBigInt(
+      await rpc<string>('eth_gasPrice').catch(() => '0x3b9aca00')
+    )
+    const nonce = hexToBigInt(
+      await rpc<string>('eth_getTransactionCount', [
+        account.address,
+        'pending',
+      ])
+    )
+
+    const walletClient = createWalletClient({
+      account,
+      chain: SLURA as any,
+      transport: http(RPC),
     })
 
     let txHash: Hex
     try {
-      txHash = await walletClient.writeContract({
-        address: VEZ,
-        abi: VEZ_PROXY_ABI,
-        functionName: 'mint',
-        args: [recipient as `0x${string}`, amountWei],
-        chain: SLURA_CHAIN,
+      // Prefer sendTransaction with explicit gas (no estimate)
+      txHash = await walletClient.sendTransaction({
         account,
+        chain: SLURA as any,
+        to: VEZ,
+        data,
+        gas,
+        gasPrice,
+        nonce: Number(nonce),
+        value: 0n,
       })
     } catch (e1) {
       try {
-        txHash = await walletClient.sendTransaction({
+        // Fallback: sign + eth_sendRawTransaction
+        const signed = await walletClient.signTransaction({
+          account,
+          chain: SLURA as any,
           to: VEZ,
           data,
-          chain: SLURA_CHAIN,
-          account,
-        })
+          gas,
+          gasPrice,
+          nonce: Number(nonce),
+          value: 0n,
+          type: 'legacy',
+        } as any)
+        txHash = (await rpc<string>('eth_sendRawTransaction', [signed])) as Hex
       } catch (e2) {
         return NextResponse.json(
           {
-            error: 'Mint transaction rejected by Slura RPC',
+            error: 'Mint TX rejected by Slura RPC',
             code: 'TX_FAILED',
             detail: String(e2 instanceof Error ? e2.message : e2),
-            detailWrite: String(e1 instanceof Error ? e1.message : e1),
+            detailPrimary: String(e1 instanceof Error ? e1.message : e1),
             signer: account.address,
-            vez: VEZ,
-            oracle: ORACLE,
+            nonce: nonce.toString(),
+            gas: gas.toString(),
+            gasPrice: gasPrice.toString(),
             calldata: data,
+            vez: VEZ,
           },
           { status: 502 }
         )
@@ -277,7 +338,7 @@ export async function POST(req: NextRequest) {
       signer: account.address,
       vez: VEZ,
       oracle: ORACLE,
-      message: `Minted ${formatUnits(amountWei, 18)} VEZ → ${recipient} (EUR-backed 1:1)`,
+      message: `Minted ${formatUnits(amountWei, 18)} VEZ → ${recipient} (EUR 1:1)`,
     })
   } catch (error) {
     console.error('Mint error:', error)
