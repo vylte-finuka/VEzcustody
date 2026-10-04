@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "pages:deploy": "wrangler pages deploy cloudflare-pages --project-name=vez-por",
+    "pages:build": "echo \"Static assets in cloudflare-pages/\""
   },
   "keywords": [
     "nextjs",
