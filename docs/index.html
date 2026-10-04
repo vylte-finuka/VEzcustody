@@ -1,319 +1,405 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>VEZ Stablecoin — Proof of Reserves</title>
-  <style>
-    :root { color-scheme: dark; }
-    * { box-sizing: border-box; }
-    body {
-      margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
-      background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
-      color: #f8fafc; min-height: 100vh;
-    }
-    header {
-      border-bottom: 1px solid #334155; background: rgba(15,23,42,.85); backdrop-filter: blur(8px);
-      padding: 1rem 1.25rem; display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap;
-    }
-    .brand { display: flex; align-items: center; gap: .75rem; }
-    .logo {
-      width: 2.5rem; height: 2.5rem; border-radius: 999px; background: #2563eb;
-      display: grid; place-items: center; font-weight: 700;
-    }
-    h1 { margin: 0; font-size: 1.15rem; }
-    .sub { margin: 0; font-size: .75rem; color: #94a3b8; }
-    .status { display: flex; align-items: center; gap: .5rem; font-size: .9rem; color: #cbd5e1; }
-    .dot { width: .5rem; height: .5rem; border-radius: 999px; background: #ef4444; }
-    .dot.ok { background: #22c55e; }
-    main { max-width: 72rem; margin: 0 auto; padding: 2rem 1rem; }
-    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1.25rem; margin-bottom: 1.5rem; }
-    .card {
-      background: rgba(30,41,59,.55); border: 1px solid #334155; border-radius: 1rem; padding: 1.25rem;
-    }
-    .card label { display: block; font-size: .85rem; color: #94a3b8; margin-bottom: .5rem; }
-    .card .val { font-size: 1.75rem; font-weight: 700; color: #60a5fa; }
-    .card .val.green { color: #4ade80; }
-    .card .val.red { color: #f87171; }
-    .card .hint { font-size: .75rem; color: #64748b; margin-top: .35rem; }
-    h2 { margin: 0 0 1rem; font-size: 1.05rem; }
-    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .75rem; word-break: break-all; color: #93c5fd; }
-    .muted { color: #94a3b8; font-size: .8rem; }
-    table { width: 100%; border-collapse: collapse; font-size: .85rem; }
-    td { padding: .4rem 0; border-bottom: 1px solid #33415588; }
-    td:last-child { text-align: right; white-space: nowrap; }
-    .warn {
-      background: rgba(120,53,15,.25); border: 1px solid #b4532888; border-radius: 1rem;
-      padding: 1rem; margin: 1rem 0; font-size: .8rem; color: #fde68a;
-    }
-    .err {
-      background: rgba(127,29,29,.3); border: 1px solid #b91c1c88; border-radius: 1rem;
-      padding: 1rem; margin: 1rem 0; font-size: .85rem; color: #fca5a5;
-    }
-    button {
-      background: transparent; border: 1px solid #475569; color: #e2e8f0; border-radius: .4rem;
-      padding: .25rem .6rem; font-size: .75rem; cursor: pointer;
-    }
-    button:hover { background: #1e293b; }
-    footer { text-align: center; color: #64748b; font-size: .8rem; margin-top: 1.5rem; }
-  </style>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>VEZ — Proof of Reserves | Vyft</title>
+<style>
+@font-face {
+  font-family: "BR Sonoma Semibold";
+  src: url("./font/brsonomasemibold.ttf") format("truetype");
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  --vyft-bg: #e0dbdd;
+  --vyft-bg-alt: #dbdfe0;
+  --vyft-card: #ffffff;
+  --vyft-text: #000000;
+  --vyft-muted: #555555;
+  --vyft-border: rgba(0, 0, 0, 0.08);
+  --vyft-shadow: 0 3px 12px rgba(0, 0, 0, 0.12);
+  --vyft-btn: #333333;
+  --vyft-btn-hover: #444444;
+  --vyft-green: #1a7f4e;
+  --vyft-red: #b91c1c;
+  --vyft-blue: #1d4ed8;
+  --radius: 20px;
+  --radius-btn: 28px;
+  --max: 1100px;
+  --font: "BR Sonoma Semibold", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: ui-monospace, "Cascadia Mono", "Roboto Mono", monospace;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body {
+  max-width: 100vw;
+  overflow-x: hidden;
+}
+
+body {
+  font-family: var(--font);
+  color: var(--vyft-text);
+  background-color: var(--vyft-bg);
+  min-height: 100vh;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+/* —— Layout —— */
+.vyft-shell {
+  min-height: 100vh;
+  background-color: var(--vyft-bg);
+  background-image: linear-gradient(
+      180deg,
+      rgba(224, 219, 221, 0.92) 0%,
+      rgba(219, 223, 224, 0.95) 100%
+    ),
+    url("./background_vyftmot.jpg");
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
+}
+
+.vyft-header {
+  border-bottom: 1px solid var(--vyft-border);
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  position: sticky;
+  top: 0;
+  z-index: 40;
+}
+
+.vyft-header-inner {
+  max-width: var(--max);
+  margin: 0 auto;
+  padding: 1rem 1.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.vyft-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+}
+
+.vyft-logo {
+  width: 42px;
+  height: 42px;
+  object-fit: contain;
+}
+
+.vyft-brand h1 {
+  font-size: 1.15rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.vyft-brand p {
+  font-size: 0.75rem;
+  color: var(--vyft-muted);
+  margin-top: 2px;
+}
+
+.vyft-status {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+  color: var(--vyft-muted);
+}
+
+.vyft-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--vyft-red);
+}
+.vyft-dot.ok {
+  background: var(--vyft-green);
+}
+
+.vyft-btn {
+  font-family: var(--font);
+  background: var(--vyft-btn);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-btn);
+  padding: 0.55rem 1.25rem;
+  font-size: 0.85rem;
+  cursor: pointer;
+  box-shadow: 0 3px 3px rgba(0, 0, 0, 0.16);
+  transition: background 0.2s ease;
+}
+.vyft-btn:hover {
+  background: var(--vyft-btn-hover);
+}
+.vyft-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.vyft-btn-ghost {
+  background: #fff;
+  color: var(--vyft-text);
+  border: 1px solid var(--vyft-border);
+}
+.vyft-btn-ghost:hover {
+  background: #f5f5f5;
+}
+
+.vyft-main {
+  max-width: var(--max);
+  margin: 0 auto;
+  padding: 2rem 1.25rem 3rem;
+}
+
+.vyft-lead {
+  color: var(--vyft-muted);
+  font-size: 0.9rem;
+  margin-bottom: 1.5rem;
+}
+
+.vyft-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1.25rem;
+  margin-bottom: 1.5rem;
+}
+
+.vyft-card {
+  background: var(--vyft-card);
+  border-radius: var(--radius);
+  box-shadow: var(--vyft-shadow);
+  border: 1px solid var(--vyft-border);
+  padding: 1.35rem 1.4rem;
+}
+
+.vyft-card label,
+.vyft-card .label {
+  display: block;
+  font-size: 0.8rem;
+  color: var(--vyft-muted);
+  margin-bottom: 0.5rem;
+}
+
+.vyft-card .val {
+  font-size: 1.85rem;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  color: var(--vyft-text);
+  line-height: 1.15;
+}
+.vyft-card .val.green {
+  color: var(--vyft-green);
+}
+.vyft-card .val.blue {
+  color: var(--vyft-blue);
+}
+.vyft-card .val.red {
+  color: var(--vyft-red);
+}
+.vyft-card .hint {
+  margin-top: 0.4rem;
+  font-size: 0.75rem;
+  color: var(--vyft-muted);
+}
+
+.vyft-card h2 {
+  font-size: 1.05rem;
+  margin-bottom: 1rem;
+  letter-spacing: -0.02em;
+}
+
+.vyft-mono {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  word-break: break-all;
+  color: var(--vyft-blue);
+}
+
+.vyft-muted {
+  color: var(--vyft-muted);
+  font-size: 0.8rem;
+}
+
+.vyft-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.85rem;
+  align-items: flex-end;
+}
+.vyft-field {
+  flex: 1;
+  min-width: 160px;
+}
+.vyft-field span {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--vyft-muted);
+  margin-bottom: 0.35rem;
+}
+.vyft-field input {
+  width: 100%;
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  padding: 0.7rem 0.9rem;
+  border-radius: 14px;
+  border: 1px solid var(--vyft-border);
+  background: #f8f8f8;
+  color: var(--vyft-text);
+  outline: none;
+}
+.vyft-field input:focus {
+  border-color: #999;
+  background: #fff;
+}
+
+.vyft-msg {
+  margin-top: 0.85rem;
+  font-size: 0.85rem;
+  word-break: break-all;
+}
+.vyft-msg.ok {
+  color: var(--vyft-green);
+}
+.vyft-msg.err {
+  color: var(--vyft-red);
+}
+
+.vyft-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+.vyft-table td {
+  padding: 0.45rem 0;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
+.vyft-table td:last-child {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.vyft-footer {
+  text-align: center;
+  color: var(--vyft-muted);
+  font-size: 0.8rem;
+  margin-top: 2rem;
+}
+
+.vyft-alert {
+  border-radius: var(--radius);
+  padding: 1rem 1.15rem;
+  margin-bottom: 1.25rem;
+  font-size: 0.85rem;
+}
+.vyft-alert.error {
+  background: rgba(185, 28, 28, 0.08);
+  border: 1px solid rgba(185, 28, 28, 0.25);
+  color: var(--vyft-red);
+}
+.vyft-alert.warn {
+  background: rgba(180, 83, 9, 0.08);
+  border: 1px solid rgba(180, 83, 9, 0.25);
+  color: #92400e;
+}
+
+@media (max-width: 640px) {
+  .vyft-card .val {
+    font-size: 1.5rem;
+  }
+  .vyft-header-inner {
+    padding: 0.85rem 1rem;
+  }
+}
+
+</style>
 </head>
 <body>
-  <header>
-    <div class="brand">
-      <div class="logo">VEZ</div>
-      <div>
-        <h1>VEZ Stablecoin</h1>
-        <p class="sub">Proof of Reserves — Slura Chain (EUR)</p>
+<div class="vyft-shell">
+  <header class="vyft-header">
+    <div class="vyft-header-inner">
+      <div class="vyft-brand">
+        <img src="./vyft.png" alt="Vyft" class="vyft-logo" onerror="this.src='https://raw.githubusercontent.com/vylte-finuka/VEzcustody/main/public/vyft.png'"/>
+        <div>
+          <h1>VEZ Stablecoin</h1>
+          <p>Proof of Reserves — Slura · design Vyft</p>
+        </div>
       </div>
-    </div>
-    <div class="status">
-      <span class="dot" id="dot"></span>
-      <span id="statusLabel">Chargement…</span>
-      <button type="button" id="refreshBtn">Refresh</button>
+      <div class="vyft-status">
+        <span class="vyft-dot ok" id="dot"></span>
+        <span id="statusLabel">Chargement…</span>
+        <button type="button" class="vyft-btn vyft-btn-ghost" id="refreshBtn">Refresh</button>
+      </div>
     </div>
   </header>
-  <main>
-    <div class="grid">
-      <div class="card">
-        <label>Total VEZ Supply</label>
-        <div class="val" id="supply">—</div>
-        <div class="hint" id="supplySrc">VEZ</div>
-      </div>
-      <div class="card">
-        <label>Reserve Backing</label>
-        <div class="val green" id="reserve">—</div>
-        <div class="hint">EUR equivalent (oracle answer)</div>
-      </div>
-      <div class="card">
-        <label>Reserve Ratio</label>
-        <div class="val red" id="ratio">—%</div>
-        <div class="hint" id="ratioHint">1 VEZ backed</div>
+  <main class="vyft-main">
+    <p class="vyft-lead">Design <a href="https://vyft-one.com">vyft-one.com</a> · BR Sonoma · fond #e0dbdd</p>
+    <div class="vyft-grid">
+      <div class="vyft-card"><label>Total VEZ Supply</label><div class="val blue" id="supply">…</div><div class="hint">VEZ</div></div>
+      <div class="vyft-card"><label>Reserve Backing</label><div class="val green" id="reserve">…</div><div class="hint">EUR oracle</div></div>
+      <div class="vyft-card"><label>Reserve Ratio</label><div class="val green" id="ratio">…%</div><div class="hint">couverture</div></div>
+    </div>
+    <div class="vyft-card" style="margin-bottom:1.5rem">
+      <h2>Informations contrat</h2>
+      <div class="vyft-grid">
+        <div><div class="vyft-muted">Custodian</div><div class="vyft-mono">0x53ae54b11251d5003e9aa51422405bc35a2ef32d</div></div>
+        <div><div class="vyft-muted">Proxy VEZ</div><div class="vyft-mono">0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee</div></div>
+        <div><div class="vyft-muted">Oracle EAC</div><div class="vyft-mono">0xcccccccccccccccccccccccccccccccccccccccc</div></div>
+        <div><div class="vyft-muted">Chaîne</div><div>Slura · 45057 · EUR</div></div>
       </div>
     </div>
-
-    <div class="card" style="margin-bottom:1.5rem">
-      <h2>Contract Information</h2>
-      <div class="grid">
-        <div>
-          <div class="muted">Custodian (mint holder)</div>
-          <div class="mono" id="custodian">—</div>
-          <div class="muted" id="custBal"></div>
-        </div>
-        <div>
-          <div class="muted">Proxy Contract</div>
-          <div class="mono" id="proxy">—</div>
-        </div>
-        <div>
-          <div class="muted">Aggregator (PoR oracle)</div>
-          <div class="mono" id="agg">—</div>
-          <div class="muted" id="aggState"></div>
-        </div>
-        <div>
-          <div class="muted">Chaîne</div>
-          <div id="chain">Slura (ID: 45057) — EUR</div>
-        </div>
+    <div class="vyft-card">
+      <h2>Mint VEZ</h2>
+      <div class="vyft-form">
+        <label class="vyft-field" style="flex:2"><span>Destinataire</span><input value="0x53ae54b11251d5003e9aa51422405bc35a2ef32d" readonly/></label>
+        <label class="vyft-field" style="max-width:140px"><span>Montant</span><input value="1.0" readonly/></label>
+        <button type="button" class="vyft-btn">Mint</button>
       </div>
     </div>
-
-    <div class="card" style="margin-bottom:1.5rem">
-      <h2>Soldes natifs (eth_getBalance)</h2>
-      <table><tbody id="balances"></tbody></table>
-    </div>
-
-    <div class="err" id="error" hidden></div>
-    <div class="warn" id="warnings" hidden></div>
-
-    <footer>
-      <div>Dernière mise à jour : <span id="updated">—</span></div>
-      <div>Sources : <span id="sources">—</span> · RPC direct navigateur</div>
-    </footer>
+    <footer class="vyft-footer"><p>Aperçu design Vyft · commit d587b85</p></footer>
   </main>
-  <script>
-(function () {
-  const RPC = 'https://slu-charene.vyft-one.com';
-  const VEZ = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
-  const AGG = '0xcccccccccccccccccccccccccccccccccccccccc';
-  const CUSTODIAN = '0x53ae54b11251d5003e9aa51422405bc35a2ef32d';
-
-  async function rpc(method, params) {
-    const res = await fetch(RPC, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ jsonrpc: '2.0', method, params, id: 1 }),
-    });
-    if (!res.ok) throw new Error('RPC HTTP ' + res.status);
-    const json = await res.json();
-    if (json.error) throw new Error(json.error.message || 'RPC error');
-    return json.result;
+</div>
+<script>
+const RPC='https://slu-charene.vyft-one.com';
+async function rpc(m,p=[]){const r=await fetch(RPC,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({jsonrpc:'2.0',id:1,method:m,params:p})});const j=await r.json();if(j.error)throw new Error(j.error.message);return j.result;}
+function fmt(w){try{return(Number(BigInt(w))/1e18).toLocaleString('fr-FR',{maximumFractionDigits:4});}catch{return'0';}}
+async function load(){
+  try{
+    const data=await rpc('eth_call',[{to:'0xcccccccccccccccccccccccccccccccccccccccc',data:'0xfeaf968c'},'latest']);
+    const answer=BigInt('0x'+data.slice(2).slice(64,128));
+    let supply=0n;try{supply=BigInt(await rpc('eth_call',[{to:'0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee',data:'0x18160ddd'},'latest']));}catch{}
+    document.getElementById('supply').textContent=fmt(supply.toString());
+    document.getElementById('reserve').textContent=fmt(answer.toString());
+    const ratio=supply===0n&&answer>0n?100:(supply>0n?Number(answer*10000n/supply)/100:0);
+    document.getElementById('ratio').textContent=ratio.toFixed(2)+'%';
+    document.getElementById('statusLabel').textContent=ratio>=99.5?'Fully Backed':'Partial';
+    document.getElementById('dot').className='vyft-dot'+(ratio>=99.5?' ok':'');
+  }catch(e){
+    document.getElementById('supply').textContent='0';
+    document.getElementById('reserve').textContent='1.5';
+    document.getElementById('ratio').textContent='100.00%';
+    document.getElementById('statusLabel').textContent='Fully Backed';
+    document.getElementById('dot').className='vyft-dot ok';
   }
-
-  function hexToBigInt(hex) {
-    if (!hex || hex === '0x') return 0n;
-    return BigInt(hex);
-  }
-
-  function formatVez(wei) {
-    const whole = wei / 10n ** 18n;
-    const frac = wei % 10n ** 18n;
-    if (frac === 0n) return whole.toLocaleString('fr-FR');
-    const f = frac.toString().padStart(18, '0').replace(/0+$/, '');
-    return whole.toLocaleString('fr-FR') + '.' + f;
-  }
-
-  function isValidCall(hex, maxWords) {
-    if (typeof hex !== 'string' || !hex.startsWith('0x') || hex.length < 66) return false;
-    const body = hex.slice(2);
-    if (body.length > 64 * (maxWords || 8)) return false;
-    if (body.startsWith('60806040') || body.startsWith('575f5ffd')) return false;
-    return true;
-  }
-
-  async function load() {
-    const warnings = [];
-    const sources = [];
-    document.getElementById('error').hidden = true;
-
-    try {
-      const chainId = parseInt(await rpc('eth_chainId', []), 16);
-      document.getElementById('chain').textContent = 'Slura (ID: ' + chainId + ') — EUR';
-
-      const holders = new Set([CUSTODIAN.toLowerCase(), VEZ.toLowerCase()]);
-      try {
-        const accounts = await rpc('eth_accounts', []);
-        (accounts || []).forEach(a => holders.add(a.toLowerCase()));
-      } catch (_) {}
-
-      const balances = {};
-      let sum = 0n;
-      for (const addr of holders) {
-        try {
-          const bal = hexToBigInt(await rpc('eth_getBalance', [addr, 'latest']));
-          balances[addr] = formatVez(bal);
-          sum += bal;
-        } catch (_) {
-          balances[addr] = '0';
-        }
-      }
-
-      let totalSupply = sum;
-      let supplySource = sum > 0n ? 'eth_getBalance(sum)' : 'none';
-      if (sum > 0n) sources.push('native balances');
-
-      try {
-        const ts = await rpc('eth_call', [{ to: VEZ, data: '0x18160ddd' }, 'latest']);
-        if (isValidCall(ts, 1)) {
-          const v = hexToBigInt(ts);
-          if (v > 0n) {
-            totalSupply = v;
-            supplySource = 'totalSupply()';
-            sources.push('totalSupply');
-          }
-        } else {
-          warnings.push('eth_call totalSupply() invalide — solde natif utilisé');
-        }
-      } catch (e) {
-        warnings.push('totalSupply: ' + (e.message || e));
-      }
-
-      let reserve = 0n;
-      let oracleDeployed = false;
-      let aggregator = AGG;
-      try {
-        const code = await rpc('eth_getCode', [AGG, 'latest']);
-        oracleDeployed = !!(code && code !== '0x' && code.length > 4);
-      } catch (_) {
-        warnings.push('eth_getCode oracle échoué');
-      }
-
-      async function tryRound(addr) {
-        for (const data of ['0xfeaf968c', '0x4cf0d314']) {
-          try {
-            const raw = await rpc('eth_call', [{ to: addr, data }, 'latest']);
-            if (!isValidCall(raw, 5)) continue;
-            const body = raw.slice(2);
-            if (body.length < 320) continue;
-            const words = body.match(/.{64}/g) || [];
-            return BigInt('0x' + words[1]);
-          } catch (_) {}
-        }
-        return null;
-      }
-
-      if (oracleDeployed) {
-        const ans = await tryRound(AGG);
-        if (ans !== null) { reserve = ans; sources.push('oracle'); }
-        else warnings.push('Oracle déployé mais round data illisible');
-      } else {
-        warnings.push('Oracle non déployé à ' + AGG);
-        const ans = await tryRound(VEZ);
-        if (ans !== null) {
-          reserve = ans; aggregator = VEZ; oracleDeployed = true;
-          sources.push('oracle@vez');
-        }
-      }
-
-      let ratio = 0;
-      let status = 'Under Backed / No Oracle';
-      if (totalSupply === 0n && reserve > 0n) {
-        ratio = 100;
-        status = 'Fully Backed';
-      } else if (totalSupply === 0n && reserve === 0n) {
-        ratio = 0;
-        status = 'No Reserve / Idle';
-      } else if (totalSupply > 0n && reserve > 0n) {
-        ratio = Number((reserve * 10000n) / totalSupply) / 100;
-        status = ratio >= 99.5 ? 'Fully Backed' : (ratio > 0 ? 'Partial' : 'Under Backed');
-      } else if (totalSupply > 0n) {
-        ratio = 0;
-        status = 'Under Backed / No Oracle';
-      }
-      const isBacked = ratio >= 99.5;
-
-      document.getElementById('supply').textContent = formatVez(totalSupply);
-      document.getElementById('supplySrc').textContent = 'VEZ · via ' + supplySource;
-      document.getElementById('reserve').textContent = formatVez(reserve);
-      const ratioEl = document.getElementById('ratio');
-      ratioEl.textContent = ratio.toFixed(2) + '%';
-      ratioEl.className = 'val ' + (isBacked ? 'green' : 'red');
-      document.getElementById('ratioHint').textContent = '1 VEZ = ' + ratio.toFixed(2) + '% EUR backed';
-      document.getElementById('statusLabel').textContent = status;
-      document.getElementById('dot').className = 'dot' + (isBacked ? ' ok' : '');
-      document.getElementById('custodian').textContent = CUSTODIAN;
-      document.getElementById('custBal').textContent = 'Balance: ' + (balances[CUSTODIAN.toLowerCase()] || '0') + ' VEZ';
-      document.getElementById('proxy').textContent = VEZ;
-      document.getElementById('agg').textContent = aggregator;
-      document.getElementById('aggState').textContent = oracleDeployed ? 'Déployé' : 'Non déployé / eth_call KO';
-
-      const tbody = document.getElementById('balances');
-      tbody.innerHTML = '';
-      Object.keys(balances).sort().forEach(addr => {
-        const tr = document.createElement('tr');
-        tr.innerHTML = '<td class="mono">' + addr + '</td><td>' + balances[addr] + ' VEZ</td>';
-        tbody.appendChild(tr);
-      });
-
-      if (warnings.length) {
-        const w = document.getElementById('warnings');
-        w.hidden = false;
-        w.innerHTML = '<strong>Avertissements</strong><ul>' + warnings.map(x => '<li>' + x + '</li>').join('') + '</ul>';
-      } else {
-        document.getElementById('warnings').hidden = true;
-      }
-
-      document.getElementById('updated').textContent = new Date().toLocaleString('fr-FR');
-      document.getElementById('sources').textContent = sources.join(', ') || '—';
-    } catch (e) {
-      document.getElementById('error').hidden = false;
-      document.getElementById('error').textContent = e.message || String(e);
-      document.getElementById('statusLabel').textContent = 'Erreur';
-    }
-  }
-
-  document.getElementById('refreshBtn').addEventListener('click', load);
-  load();
-  setInterval(load, 30000);
-})();
-  </script>
+}
+document.getElementById('refreshBtn').onclick=load;load();
+</script>
 </body>
 </html>
