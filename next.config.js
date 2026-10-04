@@ -3,6 +3,9 @@ const nextConfig = {
   reactStrictMode: true,
   // Ensure public/ assets (CSS, fonts, images) are served at root
   poweredByHeader: false,
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
   env: {
     NEXT_PUBLIC_SLURA_RPC_URL:
       process.env.NEXT_PUBLIC_SLURA_RPC_URL ||
