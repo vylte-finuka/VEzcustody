@@ -1,35 +1,25 @@
-# Deploy VEZ PoR on Cloudflare Pages (free)
+# Cloudflare Pages — VEZ PoR (static)
 
-## Option A — Connect GitHub (recommended)
-
-1. https://dash.cloudflare.com → **Workers & Pages** → **Create** → **Pages** → **Connect to Git**
-2. Select repo `vylte-finuka/VEzcustody`, branch `main`
-3. Build settings:
+## Build settings (Dashboard)
 
 | Field | Value |
 |-------|--------|
+| Production branch | `main` |
 | Framework preset | **None** |
-| Build command | *(leave empty)* or `echo static` |
+| Build command | `exit 0` |
 | Build output directory | `cloudflare-pages` |
-| Root directory | `/` |
+| Root directory | *(empty)* |
+| **Environment variable** | `SKIP_DEPENDENCY_INSTALL` = `true` |
 
-4. **Save and Deploy**
+`SKIP_DEPENDENCY_INSTALL=true` is required so Cloudflare does **not** run `bun install` / `npm install` (this site is 100% static HTML/CSS).
 
-Custom domain (optional): `por.vyft-one.com` → Cloudflare DNS CNAME to `*.pages.dev`
+## Deploy
 
-## Option B — Wrangler CLI
+1. Workers & Pages → Create → Pages → Connect Git → `VEzcustody`
+2. Apply settings above → **Save and Deploy**
+
+## CLI
 
 ```bash
-npm i -g wrangler
-wrangler pages deploy cloudflare-pages --project-name=vez-por
+npx wrangler pages deploy cloudflare-pages --project-name=vez-por
 ```
-
-## What is included
-
-- Static HTML/CSS (Vyft design) — **no Netlify credits**
-- Live PoR via browser → `https://slu-charene.vyft-one.com` (RPC)
-- Monthly reports table + snapshot download
-
-## API routes (mint / PDF)
-
-Next.js APIs (`/api/mint`, `/api/reports`) need Node. Host them later on a Worker/Node host, or keep the static PoR on Pages only.

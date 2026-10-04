@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "next lint",
     "pages:deploy": "wrangler pages deploy cloudflare-pages --project-name=vez-por",
-    "pages:build": "echo \"Static assets in cloudflare-pages/\""
+    "pages:build": "echo \"Static assets in cloudflare-pages/\"",
+    "cf:build": "exit 0"
   },
   "keywords": [
     "nextjs",
@@ -36,7 +37,6 @@
     "@netlify/plugin-nextjs": "^5.9.0"
   },
   "engines": {
-    "node": ">=20",
-    "bun": ">=1.2.0"
+    "node": ">=20"
   }
 }
