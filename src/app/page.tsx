@@ -165,8 +165,19 @@ async function fetchPorClient(): Promise<PorView> {
   }
 
   let ratio = 0
-  if (totalSupply > 0n && reserve > 0n) {
+  let status = 'Under Backed / No Oracle'
+  if (totalSupply === 0n && reserve > 0n) {
+    ratio = 100
+    status = 'Fully Backed'
+  } else if (totalSupply === 0n && reserve === 0n) {
+    ratio = 0
+    status = 'No Reserve / Idle'
+  } else if (totalSupply > 0n && reserve > 0n) {
     ratio = Number((reserve * 10000n) / totalSupply) / 100
+    status = ratio >= 99.5 ? 'Fully Backed' : ratio > 0 ? 'Partial' : 'Under Backed'
+  } else if (totalSupply > 0n) {
+    ratio = 0
+    status = 'Under Backed / No Oracle'
   }
   const isBacked = ratio >= 99.5
 
@@ -175,7 +186,7 @@ async function fetchPorClient(): Promise<PorView> {
     reserve: formatVez(reserve),
     ratio: ratio.toFixed(2),
     isBacked,
-    status: isBacked ? 'Fully Backed' : reserve > 0n ? 'Partial' : 'Under Backed / No Oracle',
+    status,
     custodian: CUSTODIAN,
     custodianBal: balances[CUSTODIAN] || '0',
     balances,

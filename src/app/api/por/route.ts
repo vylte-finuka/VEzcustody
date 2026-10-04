@@ -168,16 +168,26 @@ export async function GET() {
       )
     }
 
-    // Si pas d'oracle, ratio basé sur collatéral = answer ; sinon 0
+    // PoR ratio (niveau USD1) :
+    //  - supply=0 + réserve>0 → 100% backed, prêt à émettre (pas "Partial")
+    //  - supply>0 → reserve/supply * 100
     const supply = totalSupply
     const reserve = answer > 0n ? answer : 0n
-    // Sur EACAggregatorProxy constructeur : answer = 1e24 (1 EUR * 1e18 scale?) — on affiche formatEther-like
     let ratio = 0
-    if (supply > 0n && reserve > 0n) {
-      // ratio % = reserve/supply * 100 (même échelle 1e18)
-      ratio = Number((reserve * 10000n) / supply) / 100
-    } else if (supply > 0n && reserve === 0n) {
+    let status: string
+    if (supply === 0n && reserve > 0n) {
+      ratio = 100
+      status = 'Fully Backed'
+    } else if (supply === 0n && reserve === 0n) {
       ratio = 0
+      status = 'No Reserve / Idle'
+    } else if (supply > 0n && reserve > 0n) {
+      ratio = Number((reserve * 10000n) / supply) / 100
+      status = ratio >= 99.5 ? 'Fully Backed' : ratio > 0 ? 'Partial' : 'Under Backed'
+    } else {
+      // supply > 0, reserve = 0
+      ratio = 0
+      status = 'Under Backed / No Oracle'
     }
 
     const isBacked = ratio >= 99.5
@@ -187,9 +197,9 @@ export async function GET() {
       chainId,
       rpc: RPC,
       vezProxy: VEZ,
-      aggregator: oracleAddress,
+      aggregator: oracleAddress || AGG,
       oracleDeployed: oracleDeployed || !!oracle,
-      custodian: CUSTODIAN,
+      custodian: CUSTODIAN, // never 0x0
       totalSupply: formatVez(supply),
       totalSupplyWei: supply.toString(),
       supplySource,
@@ -198,7 +208,7 @@ export async function GET() {
       reserveAnswerWei: reserve.toString(),
       reserveRatio: ratio.toFixed(2),
       isBacked,
-      status: isBacked ? 'Fully Backed' : reserve > 0n ? 'Partial' : 'Under Backed / No Oracle',
+      status,
       roundId: roundId.toString(),
       updatedAt: updatedAt > 0n ? new Date(Number(updatedAt) * 1000).toISOString() : null,
       sources,
