@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="VEzcustody — stablecoin custody infrastructure on Slura with secure oracle and treasury operations."
+    />
+    <title>VEzcustody</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="container nav">
+        <div class="brand">
+          <span class="brand-mark">V</span>
+          <span>VEzcustody</span>
+        </div>
+        <nav>
+          <a href="#overview">Overview</a>
+          <a href="#architecture">Architecture</a>
+          <a href="#security">Security</a>
+          <a href="#deploy">Deploy</a>
+        </nav>
+      </div>
+    </header>
+
+    <main>
+      <section class="hero">
+        <div class="container hero-grid">
+          <div class="hero-copy">
+            <p class="eyebrow">Stablecoin custody layer</p>
+            <h1>Secure custody for the VEZ ecosystem on Slura.</h1>
+            <p class="lead">
+              VEzcustody is a custody and oracle product designed to manage minting,
+              treasury operations and proof-of-reserve updates in a secure and
+              transparent way.
+            </p>
+            <div class="cta-row">
+              <a class="button primary" href="#overview">Discover the product</a>
+              <a class="button secondary" href="https://github.com/vylte-finuka/VEzcustody" target="_blank" rel="noreferrer">GitHub repo</a>
+            </div>
+            <ul class="stats">
+              <li><strong>Slura</strong><span>Chain 45057</span></li>
+              <li><strong>VEZ</strong><span>Stablecoin</span></li>
+              <li><strong>PoR</strong><span>Proof of Reserve</span></li>
+            </ul>
+          </div>
+
+          <div class="hero-panel">
+            <div class="panel-card">
+              <div class="panel-header">
+                <span class="dot green"></span>
+                <span>System status</span>
+              </div>
+              <div class="metric-block">
+                <span class="metric-label">Oracle status</span>
+                <span class="metric-value">Online</span>
+              </div>
+              <div class="metric-block">
+                <span class="metric-label">Custody mode</span>
+                <span class="metric-value">Server-side signed</span>
+              </div>
+              <div class="metric-block">
+                <span class="metric-label">Automation</span>
+                <span class="metric-value">Next.js + viem</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="overview" class="section">
+        <div class="container">
+          <div class="section-heading">
+            <p class="eyebrow">Overview</p>
+            <h2>Built for reliable liquid collateral operations.</h2>
+          </div>
+          <div class="feature-grid">
+            <article class="card">
+              <h3>Custody</h3>
+              <p>
+                Use a secure operational flow to manage mint and reserve logic with
+                explicit server-side authorization.
+              </p>
+            </article>
+            <article class="card">
+              <h3>Oracle updates</h3>
+              <p>
+                Direct transaction handling via viem and wallet infrastructure,
+                removing unnecessary CRE layers.
+              </p>
+            </article>
+            <article class="card">
+              <h3>Proof of Reserve</h3>
+              <p>
+                Expose clear accounting and status data for operators and auditors
+                through a dedicated dashboard.
+              </p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section id="architecture" class="section alt">
+        <div class="container">
+          <div class="section-heading">
+            <p class="eyebrow">Architecture</p>
+            <h2>Core components powering VEzcustody.</h2>
+          </div>
+          <div class="architecture-list">
+            <div class="arch-item">
+              <span class="arch-index">01</span>
+              <div>
+                <h3>Smart contracts</h3>
+                <p>Proxy and aggregator contracts handling reserve and oracle logic.</p>
+              </div>
+            </div>
+            <div class="arch-item">
+              <span class="arch-index">02</span>
+              <div>
+                <h3>Next.js app</h3>
+                <p>Dashboard and client-side views connected to on-chain data.</p>
+              </div>
+            </div>
+            <div class="arch-item">
+              <span class="arch-index">03</span>
+              <div>
+                <h3>Server API</h3>
+                <p>Signed minting and oracle update endpoints executed safely on the backend.</p>
+              </div>
+            </div>
+            <div class="arch-item">
+              <span class="arch-index">04</span>
+              <div>
+                <h3>Slura integration</h3>
+                <p>Network connectivity for privileged issuance and proof-of-reserve reporting.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="security" class="section">
+        <div class="container two-col">
+          <div>
+            <p class="eyebrow">Security</p>
+            <h2>Design choices focused on operational safety.</h2>
+          </div>
+          <div class="security-copy">
+            <ul>
+              <li>Private custodial key stored only in server-side environment variables.</li>
+              <li>Oracle updates handled directly with viem and wallet signing.</li>
+              <li>No public exposure of sensitive signing credentials.</li>
+              <li>Clear separation between app surface and backend automation.</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section id="deploy" class="section cta-wrap">
+        <div class="container cta-box">
+          <div>
+            <p class="eyebrow">Deployment</p>
+            <h2>Ready for static publication and product showcase.</h2>
+          </div>
+          <a class="button primary" href="https://github.com/vylte-finuka/VEzcustody" target="_blank" rel="noreferrer">View repository</a>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <div class="container footer-inner">
+        <span>VEzcustody</span>
+        <span>© 2026</span>
+      </div>
+    </footer>
+  </body>
+</html>
