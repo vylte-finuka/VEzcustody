@@ -395,8 +395,8 @@ export default function Home() {
         <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-6 mb-8">
           <h2 className="text-lg font-semibold mb-2">Mint VEZ (réserve EUR)</h2>
           <p className="text-xs text-slate-400 mb-4">
-            Mint limité par la réserve oracle (EAC latestRoundData). Côté serveur :
-            CUSTODIAN_PRIVATE_KEY + VEZ_PROXY_ADDRESS (défaut 0xeee…e).
+            Émission 1:1 contre réserve EUR (oracle EAC). Réserve : {reserve} EUR · Supply : {supply} VEZ.
+            Terminal serveur : CUSTODIAN_PRIVATE_KEY sur Netlify.
           </p>
           <form onSubmit={handleMint} className="flex flex-col md:flex-row gap-3 items-start md:items-end">
             <label className="flex-1 w-full">
