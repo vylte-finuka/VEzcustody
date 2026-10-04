@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import React, { useCallback, useEffect, useState } from 'react'
 
 const RPC =
   process.env.NEXT_PUBLIC_SLURA_RPC_URL || 'https://slu-charene.vyft-one.com'
@@ -194,6 +194,10 @@ export default function Home() {
   const [data, setData] = useState<PorView | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [mintTo, setMintTo] = useState(CUSTODIAN)
+  const [mintAmount, setMintAmount] = useState('1')
+  const [minting, setMinting] = useState(false)
+  const [mintMsg, setMintMsg] = useState('')
 
   const fetchData = useCallback(async () => {
     setLoading(true)
@@ -254,6 +258,36 @@ export default function Home() {
   const ratio = data?.ratio ?? '0'
   const isBacked = data?.isBacked ?? false
   const statusLabel = data?.status ?? (loading ? 'Chargement…' : 'Under Backed')
+
+  async function handleMint(e: React.FormEvent) {
+    e.preventDefault()
+    setMinting(true)
+    setMintMsg('')
+    try {
+      const res = await fetch('/api/mint', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ recipient: mintTo, amount: mintAmount }),
+      })
+      const json = await res.json()
+      if (!res.ok) {
+        setMintMsg(
+          json.error +
+            (json.availableToMint != null
+              ? ` (dispo: ${json.availableToMint} VEZ, réserve: ${json.reserveEUR} EUR)`
+              : '') +
+            (json.detail ? ` — ${json.detail}` : '')
+        )
+      } else {
+        setMintMsg(`OK: ${json.message || 'minté'} · tx ${json.txHash}`)
+        await fetchData()
+      }
+    } catch (err) {
+      setMintMsg(err instanceof Error ? err.message : 'Erreur mint')
+    } finally {
+      setMinting(false)
+    }
+  }
 
   return (
     <main className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white">
@@ -357,6 +391,48 @@ export default function Home() {
             </ul>
           </div>
         )}
+
+        <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-6 mb-8">
+          <h2 className="text-lg font-semibold mb-2">Mint VEZ (réserve EUR)</h2>
+          <p className="text-xs text-slate-400 mb-4">
+            Mint limité par la réserve oracle (EAC latestRoundData). Côté serveur :
+            CUSTODIAN_PRIVATE_KEY + VEZ_PROXY_ADDRESS (défaut 0xeee…e).
+          </p>
+          <form onSubmit={handleMint} className="flex flex-col md:flex-row gap-3 items-start md:items-end">
+            <label className="flex-1 w-full">
+              <span className="text-xs text-slate-400">Destinataire</span>
+              <input
+                className="mt-1 w-full bg-slate-900 border border-slate-600 rounded px-3 py-2 font-mono text-xs"
+                value={mintTo}
+                onChange={(e) => setMintTo(e.target.value)}
+                placeholder="0x…"
+                required
+              />
+            </label>
+            <label className="w-full md:w-40">
+              <span className="text-xs text-slate-400">Montant (VEZ)</span>
+              <input
+                className="mt-1 w-full bg-slate-900 border border-slate-600 rounded px-3 py-2 font-mono text-sm"
+                value={mintAmount}
+                onChange={(e) => setMintAmount(e.target.value)}
+                placeholder="1.0"
+                required
+              />
+            </label>
+            <button
+              type="submit"
+              disabled={minting}
+              className="px-4 py-2 rounded bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-sm font-semibold"
+            >
+              {minting ? 'Mint…' : 'Mint'}
+            </button>
+          </form>
+          {mintMsg && (
+            <p className={`mt-3 text-sm break-all ${mintMsg.startsWith('OK') ? 'text-green-400' : 'text-red-400'}`}>
+              {mintMsg}
+            </p>
+          )}
+        </div>
 
         {error && (
           <div className="bg-red-900/30 border border-red-700 rounded-xl p-4 mb-6">
