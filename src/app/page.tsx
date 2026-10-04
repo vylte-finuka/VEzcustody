@@ -202,6 +202,13 @@ async function fetchPorClient(): Promise<PorView> {
 }
 
 
+
+function copyText(text: string) {
+  if (typeof navigator !== 'undefined' && navigator.clipboard) {
+    navigator.clipboard.writeText(text).catch(() => {})
+  }
+}
+
 export default function Home() {
   const [data, setData] = useState<PorView | null>(null)
   const [loading, setLoading] = useState(true)
@@ -210,6 +217,7 @@ export default function Home() {
   const [mintAmount, setMintAmount] = useState('1')
   const [minting, setMinting] = useState(false)
   const [mintMsg, setMintMsg] = useState('')
+  const [blockNumber, setBlockNumber] = useState<string>('')
 
   const fetchData = useCallback(async () => {
     setLoading(true)
@@ -221,8 +229,8 @@ export default function Home() {
           if (json?.ok) {
             const supplyStr = String(json.totalSupply ?? '0')
             const reserveStr = String(json.reserveAnswer ?? '0')
-            const supplyN = parseFloat(supplyStr) || 0
-            const reserveN = parseFloat(reserveStr) || 0
+            const supplyN = parseFloat(supplyStr.replace(/\s/g, '').replace(',', '.')) || 0
+            const reserveN = parseFloat(reserveStr.replace(/\s/g, '').replace(',', '.')) || 0
             let ratio = String(json.reserveRatio ?? '0')
             let isBacked = !!json.isBacked
             let status = String(json.status || '')
@@ -267,13 +275,12 @@ export default function Home() {
           }
         }
       } catch {
-        /* client fallback */
+        /* fallback */
       }
       const view = await fetchPorClient()
       setData(view)
       setError('')
     } catch (e) {
-      console.error(e)
       setError(e instanceof Error ? e.message : 'Erreur chargement PoR')
     } finally {
       setLoading(false)
@@ -282,15 +289,36 @@ export default function Home() {
 
   useEffect(() => {
     fetchData()
-    const id = setInterval(fetchData, 30_000)
+    const id = setInterval(fetchData, 60_000)
     return () => clearInterval(id)
   }, [fetchData])
 
-  const supply = data?.totalSupply ?? '0'
-  const reserve = data?.reserve ?? '0'
-  const ratio = data?.ratio ?? '0'
+  useEffect(() => {
+    ;(async () => {
+      try {
+        const res = await fetch(RPC, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            jsonrpc: '2.0',
+            id: 1,
+            method: 'eth_blockNumber',
+            params: [],
+          }),
+        })
+        const j = await res.json()
+        if (j.result) setBlockNumber(String(parseInt(j.result, 16)))
+      } catch {
+        /* ignore */
+      }
+    })()
+  }, [data?.fetchedAt])
+
+  const supply = data?.totalSupply ?? '—'
+  const reserve = data?.reserve ?? '—'
+  const ratio = data?.ratio ?? '—'
   const isBacked = data?.isBacked ?? false
-  const statusLabel = data?.status ?? (loading ? 'Chargement…' : '—')
+  const ratioClass = isBacked ? 'ok' : parseFloat(ratio) > 0 ? 'warn' : 'bad'
 
   async function handleMint(e: React.FormEvent) {
     e.preventDefault()
@@ -307,12 +335,12 @@ export default function Home() {
         setMintMsg(
           (json.error || 'Erreur') +
             (json.availableToMint != null
-              ? ` (dispo: ${json.availableToMint} VEZ, réserve: ${json.reserveEUR} EUR)`
+              ? ` · dispo ${json.availableToMint} VEZ`
               : '') +
             (json.detail ? ` — ${json.detail}` : '')
         )
       } else {
-        setMintMsg(`OK: ${json.message || 'minté'} · tx ${json.txHash}`)
+        setMintMsg(`OK · ${json.message || 'minted'} · ${json.txHash}`)
         await fetchData()
       }
     } catch (err) {
@@ -322,158 +350,246 @@ export default function Home() {
     }
   }
 
+  const oracle = data?.aggregator ?? AGG
+  const vez = data?.vezProxy ?? VEZ
+  const custodian = data?.custodian ?? CUSTODIAN
+
   return (
-    <div className="vyft-shell">
-      <header className="vyft-header">
-        <div className="vyft-header-inner">
-          <div className="vyft-brand">
+    <div className="por-shell">
+      <header className="por-header">
+        <div className="por-header-inner">
+          <div className="por-brand">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/vyft.png" alt="Vyft" className="vyft-logo" />
+            <img src="/vyft.png" alt="Vyft" />
             <div>
-              <h1>VEZ Stablecoin</h1>
-              <p>Proof of Reserves — Slura · design Vyft</p>
+              <h1>VEZ Proof of Reserves</h1>
+              <p>Live on-chain · Slura Charène</p>
             </div>
           </div>
-          <div className="vyft-status">
-            <span className={`vyft-dot${isBacked ? ' ok' : ''}`} />
-            <span>{statusLabel}</span>
-            <button type="button" className="vyft-btn vyft-btn-ghost" onClick={fetchData}>
-              Refresh
+          <div className="por-header-actions">
+            <span className="live-badge">
+              <span className="pulse" />
+              Live
+            </span>
+            <button type="button" className="btn" onClick={fetchData} disabled={loading}>
+              {loading ? 'Refreshing…' : 'Refresh'}
             </button>
           </div>
         </div>
       </header>
 
-      <main className="vyft-main">
-        <p className="vyft-lead">
-          {loading ? 'Chargement des données PoR…' : 'Réserves EUR (oracle EAC) vs supply VEZ on-chain.'}
-        </p>
-
-        <div className="vyft-grid">
-          <div className="vyft-card">
-            <label>Total VEZ Supply</label>
-            <div className="val blue">{supply}</div>
-            <div className="hint">VEZ · {data?.supplySource || '—'}</div>
-          </div>
-          <div className="vyft-card">
-            <label>Reserve Backing</label>
-            <div className="val green">{reserve}</div>
-            <div className="hint">EUR (oracle latestRoundData)</div>
-          </div>
-          <div className="vyft-card">
-            <label>Reserve Ratio</label>
-            <div className={`val ${isBacked ? 'green' : 'red'}`}>{ratio}%</div>
-            <div className="hint">1 VEZ ↔ couverture EUR</div>
-          </div>
-        </div>
-
-        <div className="vyft-card" style={{ marginBottom: '1.5rem' }}>
-          <h2>Informations contrat</h2>
-          <div className="vyft-grid">
-            <div>
-              <div className="vyft-muted">Custodian</div>
-              <div className="vyft-mono">{data?.custodian ?? CUSTODIAN}</div>
-              <div className="vyft-muted" style={{ marginTop: 4 }}>
-                Solde : {data?.custodianBal ?? '—'} VEZ
-              </div>
+      <main className="por-main">
+        {/* HERO — total reserves (USD1 layout) */}
+        <section className="por-hero">
+          <p className="eyebrow">Total reserves backing VEZ</p>
+          {loading && !data ? (
+            <div className="skel" style={{ width: '12rem', height: '3.5rem', margin: '0 auto' }} />
+          ) : (
+            <div className="hero-value">
+              {reserve}
+              <span className="hero-unit">EUR</span>
             </div>
-            <div>
-              <div className="vyft-muted">Proxy VEZ</div>
-              <div className="vyft-mono">{data?.vezProxy ?? VEZ}</div>
-            </div>
-            <div>
-              <div className="vyft-muted">Oracle EAC (PoR)</div>
-              <div className="vyft-mono">{data?.aggregator ?? AGG}</div>
-              <div className="vyft-muted" style={{ marginTop: 4 }}>
-                {data?.oracleDeployed ? 'Déployé' : 'Non déployé'}
-              </div>
-            </div>
-            <div>
-              <div className="vyft-muted">Chaîne</div>
-              <div>Slura · ID {data?.chainId ?? 45057} · EUR</div>
-            </div>
-          </div>
-        </div>
-
-        {data?.balances && Object.keys(data.balances).length > 0 && (
-          <div className="vyft-card" style={{ marginBottom: '1.5rem' }}>
-            <h2>Soldes (eth_getBalance)</h2>
-            <table className="vyft-table">
-              <tbody>
-                {Object.entries(data.balances).map(([addr, bal]) => (
-                  <tr key={addr}>
-                    <td className="vyft-mono">{addr}</td>
-                    <td>{bal} VEZ</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-
-        <div className="vyft-card" style={{ marginBottom: '1.5rem' }}>
-          <h2>Mint VEZ (réserve EUR)</h2>
-          <p className="vyft-muted" style={{ marginBottom: '1rem' }}>
-            Émission 1:1 · réserve {reserve} EUR · supply {supply} VEZ. Clé custodian côté serveur
-            (Netlify).
-          </p>
-          <form className="vyft-form" onSubmit={handleMint}>
-            <label className="vyft-field" style={{ flex: 2 }}>
-              <span>Destinataire</span>
-              <input
-                value={mintTo}
-                onChange={(e) => setMintTo(e.target.value)}
-                placeholder="0x…"
-                required
-              />
-            </label>
-            <label className="vyft-field" style={{ maxWidth: 140 }}>
-              <span>Montant (VEZ)</span>
-              <input
-                value={mintAmount}
-                onChange={(e) => setMintAmount(e.target.value)}
-                placeholder="1.0"
-                required
-              />
-            </label>
-            <button type="submit" className="vyft-btn" disabled={minting}>
-              {minting ? 'Mint…' : 'Mint'}
-            </button>
-          </form>
-          {mintMsg && (
-            <p className={`vyft-msg ${mintMsg.startsWith('OK') ? 'ok' : 'err'}`}>{mintMsg}</p>
           )}
+          <p className="meta">
+            {data?.fetchedAt
+              ? `Last refresh: ${new Date(data.fetchedAt).toLocaleString('fr-FR')}`
+              : 'Loading…'}
+            {' · '}
+            Status: <strong style={{ color: isBacked ? 'var(--success)' : 'var(--warning)' }}>
+              {data?.status ?? '—'}
+            </strong>
+          </p>
+        </section>
+
+        {/* STATS — ratio + supply */}
+        <div className="stats-grid">
+          <div className="stat-card">
+            <div className="label">Collateralization ratio</div>
+            <div className={`value ${ratioClass}`}>
+              {loading && !data ? '—' : `${ratio}%`}
+            </div>
+          </div>
+          <div className="stat-card">
+            <div className="label">Total VEZ supply</div>
+            <div className="value">
+              {loading && !data ? '—' : supply}
+              <span style={{ fontSize: '0.55em', color: 'var(--text-3)', marginLeft: 6 }}>
+                VEZ
+              </span>
+            </div>
+          </div>
         </div>
 
-        {error && <div className="vyft-alert error">{error}</div>}
-        {data?.warnings && data.warnings.length > 0 && (
-          <div className="vyft-alert warn">
-            <strong>Avertissements</strong>
-            <ul style={{ marginTop: 6, paddingLeft: '1.1rem' }}>
-              {data.warnings.map((w) => (
-                <li key={w}>{w}</li>
-              ))}
-            </ul>
+        {/* CONTRACT INFO */}
+        <section className="card">
+          <div className="card-header">
+            <h2>Contract info</h2>
+            <a
+              href={`https://slu-charene.vyft-one.com`}
+              target="_blank"
+              rel="noreferrer"
+              style={{ fontSize: '0.8rem' }}
+            >
+              RPC · chain {data?.chainId ?? 45057}
+            </a>
           </div>
+          <div className="card-body">
+            <div className="detail-grid">
+              <div className="detail-field">
+                <div className="lab">Data source</div>
+                <div className="val">EAC Aggregator (PoR oracle)</div>
+              </div>
+              <div className="detail-field">
+                <div className="lab">Oracle contract</div>
+                <div className="val mono">
+                  {oracle}
+                  <button type="button" className="copy-btn" onClick={() => copyText(oracle)}>
+                    Copy
+                  </button>
+                </div>
+              </div>
+              <div className="detail-field">
+                <div className="lab">VEZ proxy</div>
+                <div className="val mono">
+                  {vez}
+                  <button type="button" className="copy-btn" onClick={() => copyText(vez)}>
+                    Copy
+                  </button>
+                </div>
+              </div>
+              <div className="detail-field">
+                <div className="lab">Custodian</div>
+                <div className="val mono">
+                  {custodian}
+                  <button type="button" className="copy-btn" onClick={() => copyText(custodian)}>
+                    Copy
+                  </button>
+                </div>
+              </div>
+              <div className="detail-field">
+                <div className="lab">Latest block</div>
+                <div className="val">{blockNumber || '—'}</div>
+              </div>
+              <div className="detail-field">
+                <div className="lab">Function</div>
+                <div className="val mono">latestRoundData()</div>
+              </div>
+              <div className="detail-field">
+                <div className="lab">Oracle deployed</div>
+                <div className="val">{data?.oracleDeployed ? 'Yes' : 'No'}</div>
+              </div>
+              <div className="detail-field">
+                <div className="lab">Supply source</div>
+                <div className="val">{data?.supplySource || '—'}</div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* HOLDINGS TABLE */}
+        {data?.balances && Object.keys(data.balances).length > 0 && (
+          <section className="card">
+            <div className="card-header">
+              <h2>VEZ holdings breakdown</h2>
+              <span style={{ fontSize: '0.75rem', color: 'var(--text-3)' }}>
+                eth_getBalance
+              </span>
+            </div>
+            <div className="card-body">
+              <table className="holdings">
+                <thead>
+                  <tr>
+                    <th>Address</th>
+                    <th>Balance</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {Object.entries(data.balances).map(([addr, bal]) => (
+                    <tr key={addr}>
+                      <td className="mono">
+                        {addr}
+                        <button
+                          type="button"
+                          className="copy-btn"
+                          onClick={() => copyText(addr)}
+                        >
+                          Copy
+                        </button>
+                      </td>
+                      <td>
+                        {bal} <span style={{ color: 'var(--text-3)' }}>VEZ</span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
         )}
 
-        <footer className="vyft-footer">
-          <p>
-            MAJ :{' '}
-            {data?.fetchedAt
-              ? new Date(data.fetchedAt).toLocaleString('fr-FR')
-              : loading
-                ? '…'
-                : '—'}
-          </p>
-          <p style={{ marginTop: 4 }}>
-            Sources : {(data?.sources || []).join(', ') || '—'} ·{' '}
-            <a href="https://vyft-one.com" target="_blank" rel="noreferrer">
-              vyft-one.com
-            </a>
-          </p>
-        </footer>
+        {/* ISSUANCE */}
+        <section className="card">
+          <div className="card-header">
+            <h2>Issuance (mint)</h2>
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-3)' }}>
+              1:1 EUR reserve cap
+            </span>
+          </div>
+          <div className="card-body">
+            <p style={{ fontSize: '0.8rem', color: 'var(--text-2)', marginBottom: '1rem' }}>
+              Mint limited by oracle reserve ({reserve} EUR) minus circulating supply ({supply}{' '}
+              VEZ). Requires CUSTODIAN_PRIVATE_KEY on the API host.
+            </p>
+            <form className="form-row" onSubmit={handleMint}>
+              <label className="field" style={{ flex: 2 }}>
+                <span>Recipient</span>
+                <input
+                  value={mintTo}
+                  onChange={(e) => setMintTo(e.target.value)}
+                  placeholder="0x…"
+                  required
+                />
+              </label>
+              <label className="field" style={{ maxWidth: 140 }}>
+                <span>Amount (VEZ)</span>
+                <input
+                  value={mintAmount}
+                  onChange={(e) => setMintAmount(e.target.value)}
+                  required
+                />
+              </label>
+              <button type="submit" className="btn btn-primary" disabled={minting}>
+                {minting ? 'Minting…' : 'Mint'}
+              </button>
+            </form>
+            {mintMsg && (
+              <p className={`msg ${mintMsg.startsWith('OK') ? 'ok' : 'err'}`}>{mintMsg}</p>
+            )}
+          </div>
+        </section>
+
+        {error && <div className="alert error">{error}</div>}
+        {data?.warnings && data.warnings.length > 0 && (
+          <div className="alert warn">
+            {data.warnings.map((w) => (
+              <div key={w}>{w}</div>
+            ))}
+          </div>
+        )}
       </main>
+
+      <footer className="por-footer">
+        <p>
+          Sources: {(data?.sources || []).join(', ') || 'on-chain'} · Layout inspired by{' '}
+          <a href="https://por.worldlibertyfinancial.com/" target="_blank" rel="noreferrer">
+            USD1 Proof of Reserves
+          </a>
+          {' · '}
+          <a href="https://vyft-one.com" target="_blank" rel="noreferrer">
+            Vyft
+          </a>
+        </p>
+      </footer>
     </div>
   )
 }
