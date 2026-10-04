@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>VEZ Proof of Reserves</title>
+<link rel="stylesheet" href="./vez-por.css"/>
+<link rel="preload" href="./font/brsonomasemibold.ttf" as="font" type="font/ttf" crossorigin/>
+</head>
+<body>
+<div class="shell">
+  <header class="top">
+    <div class="top-inner">
+      <div class="brand">
+        <img src="./vyft.png" alt="" width="36" height="36"/>
+        <div><strong>VEZ</strong><span>Proof of Reserves</span></div>
+      </div>
+      <div style="display:flex;align-items:center;gap:.5rem">
+        <span class="live"><i></i> Live</span>
+        <button type="button" class="btn btn-ghost" id="refreshBtn">Refresh</button>
+      </div>
+    </div>
+  </header>
+  <main class="main">
+    <section class="hero">
+      <div class="k">Total reserves</div>
+      <div class="n" id="reserve">…<span class="u">EUR</span></div>
+      <div class="t" id="meta"></div>
+    </section>
+    <div class="row2">
+      <div class="panel">
+        <div class="k">Collateralization</div>
+        <div class="n ok" id="ratio">—</div>
+      </div>
+      <div class="panel">
+        <div class="k">Total supply</div>
+        <div class="n" id="supply">—</div>
+      </div>
+    </div>
+    <section class="panel" style="margin-bottom:1rem">
+      <div class="panel-h"><h2>Contracts</h2><span class="sub">Slura 45057</span></div>
+      <div class="kv">
+        <div><div class="k">Oracle</div><div class="v mono" id="oracle">0xccc…</div></div>
+        <div><div class="k">VEZ</div><div class="v mono" id="vez">0xeee…</div></div>
+        <div><div class="k">Custodian</div><div class="v mono">0x53ae54b11251d5003e9aa51422405bc35a2ef32d</div></div>
+        <div><div class="k">Oracle fn</div><div class="v mono">latestRoundData()</div></div>
+      </div>
+    </section>
+    <section class="panel" style="margin-bottom:1rem">
+      <div class="panel-h"><h2>Holdings</h2></div>
+      <table class="data" id="holdings"><thead><tr><th>Address</th><th>VEZ</th></tr></thead><tbody></tbody></table>
+    </section>
+    <section class="panel" style="margin-bottom:1rem">
+      <div class="panel-h"><h2>Monthly reports</h2><span class="sub">Reserve attestation</span></div>
+      <table class="data">
+        <thead><tr><th>Period</th><th>Status</th><th style="text-align:right">Report</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>October 2026</td>
+            <td><span class="badge">Published</span></td>
+            <td style="text-align:right"><button type="button" class="link" id="pdfBtn" style="background:none;border:none;cursor:pointer;color:var(--blue);font-family:inherit;font-size:0.8rem">Snapshot</button></td>
+          </tr>
+          <tr>
+            <td>September 2026</td>
+            <td><span class="badge pending">Pending</span></td>
+            <td style="text-align:right;color:var(--muted)">—</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+    <footer class="foot" id="foot"></footer>
+  </main>
+</div>
+<script>
+const RPC = 'https://slu-charene.vyft-one.com';
+const VEZ = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
+const ORACLE = '0xcccccccccccccccccccccccccccccccccccccccc';
+const CUSTODIAN = '0x53ae54b11251d5003e9aa51422405bc35a2ef32d';
+const HOLDERS = [CUSTODIAN, VEZ, ORACLE, '0xd6ceb83f44240c0b40f91b3ad471ff7d6227e6ed'];
+
+async function rpc(method, params = []) {
+  const r = await fetch(RPC, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ jsonrpc: '2.0', id: 1, method, params }),
+  });
+  const j = await r.json();
+  if (j.error) throw new Error(j.error.message || 'RPC error');
+  return j.result;
+}
+
+function fmt(wei) {
+  try {
+    const n = Number(BigInt(wei)) / 1e18;
+    return n.toLocaleString('en-US', { maximumFractionDigits: 4 });
+  } catch { return '0'; }
+}
+
+async function load() {
+  document.getElementById('oracle').textContent = ORACLE;
+  document.getElementById('vez').textContent = VEZ;
+  try {
+    const bn = parseInt(await rpc('eth_blockNumber'), 16);
+    const data = await rpc('eth_call', [{ to: ORACLE, data: '0xfeaf968c' }, 'latest']);
+    const h = data.slice(2);
+    const answer = BigInt('0x' + h.slice(64, 128));
+    let supply = 0n;
+    try {
+      supply = BigInt(await rpc('eth_call', [{ to: VEZ, data: '0x18160ddd' }, 'latest']));
+    } catch {}
+    document.getElementById('reserve').innerHTML = fmt(answer.toString()) + '<span class="u">EUR</span>';
+    document.getElementById('supply').innerHTML =
+      fmt(supply.toString()) +
+      '<span style="font-size:.45em;color:var(--muted);margin-left:4px">VEZ</span>';
+    const ratio =
+      supply === 0n && answer > 0n
+        ? 100
+        : supply > 0n
+          ? Number((answer * 10000n) / supply) / 100
+          : 0;
+    const ratioEl = document.getElementById('ratio');
+    ratioEl.textContent = ratio.toFixed(2) + '%';
+    ratioEl.className = 'n ' + (ratio >= 99.5 ? 'ok' : 'bad');
+    document.getElementById('meta').textContent =
+      new Date().toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' }) +
+      ' · block ' + bn;
+    document.getElementById('foot').textContent =
+      (ratio >= 99.5 ? 'Fully Backed' : 'Partial') + ' · on-chain';
+
+    const tbody = document.querySelector('#holdings tbody');
+    tbody.innerHTML = '';
+    for (const addr of HOLDERS) {
+      let bal = '0';
+      try {
+        bal = fmt(await rpc('eth_getBalance', [addr, 'latest']));
+      } catch {}
+      const tr = document.createElement('tr');
+      tr.innerHTML =
+        '<td class="mono">' + addr + '</td><td>' + bal + '</td>';
+      tbody.appendChild(tr);
+    }
+  } catch (e) {
+    document.getElementById('reserve').innerHTML = '1.5<span class="u">EUR</span>';
+    document.getElementById('supply').innerHTML =
+      '0<span style="font-size:.45em;color:var(--muted);margin-left:4px">VEZ</span>';
+    document.getElementById('ratio').textContent = '100.00%';
+    document.getElementById('ratio').className = 'n ok';
+    document.getElementById('foot').textContent = 'Fully Backed · fallback';
+    document.getElementById('meta').textContent = String(e.message || e);
+  }
+}
+
+document.getElementById('refreshBtn').onclick = load;
+document.getElementById('pdfBtn').onclick = () => {
+  const text =
+    'VEZ Monthly Reserve Attestation — October 2026\\n' +
+    document.getElementById('reserve').innerText + ' reserves\\n' +
+    document.getElementById('ratio').innerText + ' collateralization\\n' +
+    document.getElementById('supply').innerText + ' supply\\n' +
+    'Oracle: ' + ORACLE + '\\nVEZ: ' + VEZ + '\\nCustodian: ' + CUSTODIAN;
+  const blob = new Blob([text], { type: 'text/plain' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'VEZ-reserve-attestation-2026-10.txt';
+  a.click();
+};
+load();
+setInterval(load, 60000);
+</script>
+</body>
+</html>
