@@ -202,14 +202,11 @@ async function fetchPorClient(): Promise<PorView> {
   }
 }
 
-
-
 function copyText(text: string) {
   if (typeof navigator !== 'undefined' && navigator.clipboard) {
     navigator.clipboard.writeText(text).catch(() => {})
   }
 }
-
 
 export default function Home() {
   const [data, setData] = useState<PorView | null>(null)
@@ -512,14 +509,9 @@ export default function Home() {
                     </span>
                   </td>
                   <td style={{ textAlign: 'right' }}>
-                    {r.status === 'published' ? (
-                      <a
-                        className="link"
-                        href={r.url || `/api/reports/${r.id}`}
-                        target="_blank"
-                        rel="noreferrer"
-                      >
-                        PDF
+                    {r.status === 'published' && r.url ? (
+                      <a className="link" href={r.url} target="_blank" rel="noreferrer">
+                        View
                       </a>
                     ) : (
                       <span style={{ color: 'var(--muted)' }}>—</span>
