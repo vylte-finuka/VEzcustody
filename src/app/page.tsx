@@ -211,14 +211,6 @@ function copyText(text: string) {
 }
 
 
-function copyText(t: string) {
-  try {
-    navigator.clipboard?.writeText(t)
-  } catch {
-    /* ignore */
-  }
-}
-
 export default function Home() {
   const [data, setData] = useState<PorView | null>(null)
   const [loading, setLoading] = useState(true)
