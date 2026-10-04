@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useCallback, useEffect, useState } from 'react'
+import { MONTHLY_REPORTS } from '../lib/monthly-reports'
 
 const RPC =
   process.env.NEXT_PUBLIC_SLURA_RPC_URL || 'https://slu-charene.vyft-one.com'
@@ -209,6 +210,15 @@ function copyText(text: string) {
   }
 }
 
+
+function copyText(t: string) {
+  try {
+    navigator.clipboard?.writeText(t)
+  } catch {
+    /* ignore */
+  }
+}
+
 export default function Home() {
   const [data, setData] = useState<PorView | null>(null)
   const [loading, setLoading] = useState(true)
@@ -217,7 +227,7 @@ export default function Home() {
   const [mintAmount, setMintAmount] = useState('1')
   const [minting, setMinting] = useState(false)
   const [mintMsg, setMintMsg] = useState('')
-  const [blockNumber, setBlockNumber] = useState<string>('')
+  const [blockNumber, setBlockNumber] = useState('')
 
   const fetchData = useCallback(async () => {
     setLoading(true)
@@ -229,8 +239,10 @@ export default function Home() {
           if (json?.ok) {
             const supplyStr = String(json.totalSupply ?? '0')
             const reserveStr = String(json.reserveAnswer ?? '0')
-            const supplyN = parseFloat(supplyStr.replace(/\s/g, '').replace(',', '.')) || 0
-            const reserveN = parseFloat(reserveStr.replace(/\s/g, '').replace(',', '.')) || 0
+            const supplyN =
+              parseFloat(supplyStr.replace(/\s/g, '').replace(',', '.')) || 0
+            const reserveN =
+              parseFloat(reserveStr.replace(/\s/g, '').replace(',', '.')) || 0
             let ratio = String(json.reserveRatio ?? '0')
             let isBacked = !!json.isBacked
             let status = String(json.status || '')
@@ -275,13 +287,13 @@ export default function Home() {
           }
         }
       } catch {
-        /* fallback */
+        /* client fallback */
       }
       const view = await fetchPorClient()
       setData(view)
       setError('')
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Erreur chargement PoR')
+      setError(e instanceof Error ? e.message : 'Load error')
     } finally {
       setLoading(false)
     }
@@ -314,11 +326,13 @@ export default function Home() {
     })()
   }, [data?.fetchedAt])
 
-  const supply = data?.totalSupply ?? '—'
-  const reserve = data?.reserve ?? '—'
-  const ratio = data?.ratio ?? '—'
+  const reserve = data?.reserve ?? (loading ? '…' : '—')
+  const supply = data?.totalSupply ?? (loading ? '…' : '—')
+  const ratio = data?.ratio ?? (loading ? '…' : '—')
   const isBacked = data?.isBacked ?? false
-  const ratioClass = isBacked ? 'ok' : parseFloat(ratio) > 0 ? 'warn' : 'bad'
+  const oracle = data?.aggregator ?? AGG
+  const vez = data?.vezProxy ?? VEZ
+  const custodian = data?.custodian ?? CUSTODIAN
 
   async function handleMint(e: React.FormEvent) {
     e.preventDefault()
@@ -333,263 +347,236 @@ export default function Home() {
       const json = await res.json()
       if (!res.ok) {
         setMintMsg(
-          (json.error || 'Erreur') +
-            (json.availableToMint != null
-              ? ` · dispo ${json.availableToMint} VEZ`
-              : '') +
-            (json.detail ? ` — ${json.detail}` : '')
+          (json.error || 'Error') + (json.detail ? ` — ${json.detail}` : '')
         )
       } else {
-        setMintMsg(`OK · ${json.message || 'minted'} · ${json.txHash}`)
+        setMintMsg(`OK ${json.txHash || ''}`)
         await fetchData()
       }
     } catch (err) {
-      setMintMsg(err instanceof Error ? err.message : 'Erreur mint')
+      setMintMsg(err instanceof Error ? err.message : 'Error')
     } finally {
       setMinting(false)
     }
   }
 
-  const oracle = data?.aggregator ?? AGG
-  const vez = data?.vezProxy ?? VEZ
-  const custodian = data?.custodian ?? CUSTODIAN
-
   return (
-    <div className="por-shell">
-      <header className="por-header">
-        <div className="por-header-inner">
-          <div className="por-brand">
+    <div className="shell">
+      <header className="top">
+        <div className="top-inner">
+          <div className="brand">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/vyft.png" alt="Vyft" />
+            <img src="/vyft.png" alt="" />
             <div>
-              <h1>VEZ Proof of Reserves</h1>
-              <p>Live on-chain · Slura Charène</p>
+              <strong>VEZ</strong>
+              <span>Proof of Reserves</span>
             </div>
           </div>
-          <div className="por-header-actions">
-            <span className="live-badge">
-              <span className="pulse" />
-              Live
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <span className="live">
+              <i /> Live
             </span>
-            <button type="button" className="btn" onClick={fetchData} disabled={loading}>
-              {loading ? 'Refreshing…' : 'Refresh'}
+            <button type="button" className="btn btn-ghost" onClick={fetchData}>
+              Refresh
             </button>
           </div>
         </div>
       </header>
 
-      <main className="por-main">
-        {/* HERO — total reserves (USD1 layout) */}
-        <section className="por-hero">
-          <p className="eyebrow">Total reserves backing VEZ</p>
-          {loading && !data ? (
-            <div className="skel" style={{ width: '12rem', height: '3.5rem', margin: '0 auto' }} />
-          ) : (
-            <div className="hero-value">
-              {reserve}
-              <span className="hero-unit">EUR</span>
-            </div>
-          )}
-          <p className="meta">
+      <main className="main">
+        {/* Primary figure — reserves */}
+        <section className="hero">
+          <div className="k">Total reserves</div>
+          <div className="n">
+            {reserve}
+            <span className="u">EUR</span>
+          </div>
+          <div className="t">
             {data?.fetchedAt
-              ? `Last refresh: ${new Date(data.fetchedAt).toLocaleString('fr-FR')}`
-              : 'Loading…'}
-            {' · '}
-            Status: <strong style={{ color: isBacked ? 'var(--success)' : 'var(--warning)' }}>
-              {data?.status ?? '—'}
-            </strong>
-          </p>
+              ? new Date(data.fetchedAt).toLocaleString('en-GB', {
+                  dateStyle: 'medium',
+                  timeStyle: 'short',
+                })
+              : ''}
+            {blockNumber ? ` · block ${blockNumber}` : ''}
+          </div>
         </section>
 
-        {/* STATS — ratio + supply */}
-        <div className="stats-grid">
-          <div className="stat-card">
-            <div className="label">Collateralization ratio</div>
-            <div className={`value ${ratioClass}`}>
-              {loading && !data ? '—' : `${ratio}%`}
-            </div>
+        {/* Ratio + supply — no long captions */}
+        <div className="row2">
+          <div className="panel">
+            <div className="k">Collateralization</div>
+            <div className={`n ${isBacked ? 'ok' : 'bad'}`}>{ratio}%</div>
           </div>
-          <div className="stat-card">
-            <div className="label">Total VEZ supply</div>
-            <div className="value">
-              {loading && !data ? '—' : supply}
-              <span style={{ fontSize: '0.55em', color: 'var(--text-3)', marginLeft: 6 }}>
+          <div className="panel">
+            <div className="k">Total supply</div>
+            <div className="n">
+              {supply}
+              <span style={{ fontSize: '0.45em', color: 'var(--muted)', marginLeft: 4 }}>
                 VEZ
               </span>
             </div>
           </div>
         </div>
 
-        {/* CONTRACT INFO */}
-        <section className="card">
-          <div className="card-header">
-            <h2>Contract info</h2>
-            <a
-              href={`https://slu-charene.vyft-one.com`}
-              target="_blank"
-              rel="noreferrer"
-              style={{ fontSize: '0.8rem' }}
-            >
-              RPC · chain {data?.chainId ?? 45057}
-            </a>
+        {/* Contracts — compact */}
+        <section className="panel" style={{ marginBottom: '1rem' }}>
+          <div className="panel-h">
+            <h2>Contracts</h2>
+            <span className="sub">Slura {data?.chainId ?? 45057}</span>
           </div>
-          <div className="card-body">
-            <div className="detail-grid">
-              <div className="detail-field">
-                <div className="lab">Data source</div>
-                <div className="val">EAC Aggregator (PoR oracle)</div>
+          <div className="kv">
+            <div>
+              <div className="k">Oracle</div>
+              <div className="v mono">
+                {oracle}
+                <button type="button" className="copy" onClick={() => copyText(oracle)}>
+                  copy
+                </button>
               </div>
-              <div className="detail-field">
-                <div className="lab">Oracle contract</div>
-                <div className="val mono">
-                  {oracle}
-                  <button type="button" className="copy-btn" onClick={() => copyText(oracle)}>
-                    Copy
-                  </button>
-                </div>
+            </div>
+            <div>
+              <div className="k">VEZ</div>
+              <div className="v mono">
+                {vez}
+                <button type="button" className="copy" onClick={() => copyText(vez)}>
+                  copy
+                </button>
               </div>
-              <div className="detail-field">
-                <div className="lab">VEZ proxy</div>
-                <div className="val mono">
-                  {vez}
-                  <button type="button" className="copy-btn" onClick={() => copyText(vez)}>
-                    Copy
-                  </button>
-                </div>
+            </div>
+            <div>
+              <div className="k">Custodian</div>
+              <div className="v mono">
+                {custodian}
+                <button type="button" className="copy" onClick={() => copyText(custodian)}>
+                  copy
+                </button>
               </div>
-              <div className="detail-field">
-                <div className="lab">Custodian</div>
-                <div className="val mono">
-                  {custodian}
-                  <button type="button" className="copy-btn" onClick={() => copyText(custodian)}>
-                    Copy
-                  </button>
-                </div>
-              </div>
-              <div className="detail-field">
-                <div className="lab">Latest block</div>
-                <div className="val">{blockNumber || '—'}</div>
-              </div>
-              <div className="detail-field">
-                <div className="lab">Function</div>
-                <div className="val mono">latestRoundData()</div>
-              </div>
-              <div className="detail-field">
-                <div className="lab">Oracle deployed</div>
-                <div className="val">{data?.oracleDeployed ? 'Yes' : 'No'}</div>
-              </div>
-              <div className="detail-field">
-                <div className="lab">Supply source</div>
-                <div className="val">{data?.supplySource || '—'}</div>
-              </div>
+            </div>
+            <div>
+              <div className="k">Oracle fn</div>
+              <div className="v mono">latestRoundData()</div>
             </div>
           </div>
         </section>
 
-        {/* HOLDINGS TABLE */}
+        {/* Holdings */}
         {data?.balances && Object.keys(data.balances).length > 0 && (
-          <section className="card">
-            <div className="card-header">
-              <h2>VEZ holdings breakdown</h2>
-              <span style={{ fontSize: '0.75rem', color: 'var(--text-3)' }}>
-                eth_getBalance
-              </span>
+          <section className="panel" style={{ marginBottom: '1rem' }}>
+            <div className="panel-h">
+              <h2>Holdings</h2>
             </div>
-            <div className="card-body">
-              <table className="holdings">
-                <thead>
-                  <tr>
-                    <th>Address</th>
-                    <th>Balance</th>
+            <table className="data">
+              <thead>
+                <tr>
+                  <th>Address</th>
+                  <th>VEZ</th>
+                </tr>
+              </thead>
+              <tbody>
+                {Object.entries(data.balances).map(([addr, bal]) => (
+                  <tr key={addr}>
+                    <td className="mono">
+                      {addr}
+                      <button
+                        type="button"
+                        className="copy"
+                        onClick={() => copyText(addr)}
+                      >
+                        copy
+                      </button>
+                    </td>
+                    <td>{bal}</td>
                   </tr>
-                </thead>
-                <tbody>
-                  {Object.entries(data.balances).map(([addr, bal]) => (
-                    <tr key={addr}>
-                      <td className="mono">
-                        {addr}
-                        <button
-                          type="button"
-                          className="copy-btn"
-                          onClick={() => copyText(addr)}
-                        >
-                          Copy
-                        </button>
-                      </td>
-                      <td>
-                        {bal} <span style={{ color: 'var(--text-3)' }}>VEZ</span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                ))}
+              </tbody>
+            </table>
           </section>
         )}
 
-        {/* ISSUANCE */}
-        <section className="card">
-          <div className="card-header">
-            <h2>Issuance (mint)</h2>
-            <span style={{ fontSize: '0.75rem', color: 'var(--text-3)' }}>
-              1:1 EUR reserve cap
-            </span>
+        {/* Monthly attestation reports — USD1-style */}
+        <section className="panel" style={{ marginBottom: '1rem' }}>
+          <div className="panel-h">
+            <h2>Monthly reports</h2>
+            <span className="sub">Reserve attestation</span>
           </div>
-          <div className="card-body">
-            <p style={{ fontSize: '0.8rem', color: 'var(--text-2)', marginBottom: '1rem' }}>
-              Mint limited by oracle reserve ({reserve} EUR) minus circulating supply ({supply}{' '}
-              VEZ). Requires CUSTODIAN_PRIVATE_KEY on the API host.
-            </p>
-            <form className="form-row" onSubmit={handleMint}>
-              <label className="field" style={{ flex: 2 }}>
-                <span>Recipient</span>
-                <input
-                  value={mintTo}
-                  onChange={(e) => setMintTo(e.target.value)}
-                  placeholder="0x…"
-                  required
-                />
-              </label>
-              <label className="field" style={{ maxWidth: 140 }}>
-                <span>Amount (VEZ)</span>
-                <input
-                  value={mintAmount}
-                  onChange={(e) => setMintAmount(e.target.value)}
-                  required
-                />
-              </label>
-              <button type="submit" className="btn btn-primary" disabled={minting}>
-                {minting ? 'Minting…' : 'Mint'}
-              </button>
-            </form>
-            {mintMsg && (
-              <p className={`msg ${mintMsg.startsWith('OK') ? 'ok' : 'err'}`}>{mintMsg}</p>
-            )}
-          </div>
+          <table className="data">
+            <thead>
+              <tr>
+                <th>Period</th>
+                <th>Status</th>
+                <th style={{ textAlign: 'right' }}>Report</th>
+              </tr>
+            </thead>
+            <tbody>
+              {MONTHLY_REPORTS.map((r) => (
+                <tr key={r.id}>
+                  <td>{r.label}</td>
+                  <td>
+                    <span
+                      className={`badge${r.status === 'pending' ? ' pending' : ''}`}
+                    >
+                      {r.status === 'published' ? 'Published' : 'Pending'}
+                    </span>
+                  </td>
+                  <td style={{ textAlign: 'right' }}>
+                    {r.status === 'published' && r.url ? (
+                      <a className="link" href={r.url} target="_blank" rel="noreferrer">
+                        View
+                      </a>
+                    ) : (
+                      <span style={{ color: 'var(--muted)' }}>—</span>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </section>
 
-        {error && <div className="alert error">{error}</div>}
-        {data?.warnings && data.warnings.length > 0 && (
-          <div className="alert warn">
-            {data.warnings.map((w) => (
-              <div key={w}>{w}</div>
-            ))}
+        {/* Mint — minimal */}
+        <section className="panel" style={{ marginBottom: '1rem' }}>
+          <div className="panel-h">
+            <h2>Mint</h2>
+            <span className="sub">1:1 EUR</span>
           </div>
-        )}
-      </main>
+          <form className="form" onSubmit={handleMint}>
+            <div className="field" style={{ flex: 2 }}>
+              <input
+                value={mintTo}
+                onChange={(e) => setMintTo(e.target.value)}
+                placeholder="0x…"
+                required
+              />
+            </div>
+            <div className="field" style={{ maxWidth: 120 }}>
+              <input
+                value={mintAmount}
+                onChange={(e) => setMintAmount(e.target.value)}
+                placeholder="1.0"
+                required
+              />
+            </div>
+            <button type="submit" className="btn" disabled={minting}>
+              {minting ? '…' : 'Mint'}
+            </button>
+          </form>
+          {mintMsg && (
+            <p className={`msg ${mintMsg.startsWith('OK') ? 'ok' : 'err'}`}>{mintMsg}</p>
+          )}
+        </section>
 
-      <footer className="por-footer">
-        <p>
-          Sources: {(data?.sources || []).join(', ') || 'on-chain'} · Layout inspired by{' '}
-          <a href="https://por.worldlibertyfinancial.com/" target="_blank" rel="noreferrer">
-            USD1 Proof of Reserves
-          </a>
-          {' · '}
-          <a href="https://vyft-one.com" target="_blank" rel="noreferrer">
-            Vyft
-          </a>
-        </p>
-      </footer>
+        {error && (
+          <p className="msg err" style={{ textAlign: 'center' }}>
+            {error}
+          </p>
+        )}
+
+        <footer className="foot">
+          {data?.status ?? ''}
+          {data?.sources?.length ? ` · ${(data.sources || []).join(', ')}` : ''}
+        </footer>
+      </main>
     </div>
   )
 }

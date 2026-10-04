@@ -3,14 +3,13 @@ import type { ReactNode } from 'react'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'VEZ Proof of Reserves | Vyft',
-  description:
-    'Live on-chain Proof of Reserves for VEZ stablecoin on Slura — reserves, collateralization ratio, supply.',
+  title: 'VEZ Proof of Reserves',
+  description: 'Institution-grade live Proof of Reserves and monthly attestation reports for VEZ.',
 }
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="fr">
+    <html lang="en">
       <body>{children}</body>
     </html>
   )
