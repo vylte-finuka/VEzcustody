@@ -1,6 +1,6 @@
 {
   "name": "vez-stablecoin-orchestrator",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Next.js application for VEZ stablecoin orchestration on Slura chain (chainId 45057)",
   "scripts": {
     "dev": "next dev",
@@ -29,7 +29,8 @@
     "@types/react-dom": "^18.0.0",
     "typescript": "^5.9.3",
     "eslint": "^8.0.0",
-    "eslint-config-next": "14.0.0"
+    "eslint-config-next": "14.0.0",
+    "@netlify/plugin-nextjs": "^5.9.0"
   },
   "engines": {
     "node": ">=20",

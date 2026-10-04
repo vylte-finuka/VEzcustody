@@ -23,3 +23,7 @@ bun run build
 
 ## No Chainlink CRE
 The workflow CRE (`@chainlink/cre-sdk`) has been fully removed. All oracle updates are handled directly via viem + wallet server-side.
+
+## Deploy
+
+Production PoR dashboard — commit-triggered Netlify deploy (`main`).
