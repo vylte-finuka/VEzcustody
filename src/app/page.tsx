@@ -219,14 +219,37 @@ export default function Home() {
         if (res.ok) {
           const json = await res.json()
           if (json?.ok) {
+            // Normalize PoR status (compat old API still returning Partial when supply=0)
+            const supplyStr = String(json.totalSupply ?? '0')
+            const reserveStr = String(json.reserveAnswer ?? '0')
+            const supplyN = parseFloat(supplyStr) || 0
+            const reserveN = parseFloat(reserveStr) || 0
+            let ratio = String(json.reserveRatio ?? '0')
+            let isBacked = !!json.isBacked
+            let status = String(json.status || '')
+            if (supplyN === 0 && reserveN > 0) {
+              ratio = '100.00'
+              isBacked = true
+              status = 'Fully Backed'
+            } else if (supplyN > 0 && reserveN > 0) {
+              const r = (reserveN / supplyN) * 100
+              ratio = r.toFixed(2)
+              isBacked = r >= 99.5
+              status = isBacked ? 'Fully Backed' : r > 0 ? 'Partial' : 'Under Backed'
+            }
+            const custodian = (
+              json.custodian && json.custodian !== '0x0000000000000000000000000000000000000000'
+                ? json.custodian
+                : CUSTODIAN
+            ).toLowerCase()
             setData({
-              totalSupply: json.totalSupply,
-              reserve: json.reserveAnswer,
-              ratio: json.reserveRatio,
-              isBacked: json.isBacked,
-              status: json.status,
-              custodian: json.custodian,
-              custodianBal: json.balances?.[json.custodian?.toLowerCase()] || '0',
+              totalSupply: supplyStr,
+              reserve: reserveStr,
+              ratio,
+              isBacked,
+              status,
+              custodian,
+              custodianBal: json.balances?.[custodian] || json.balances?.[CUSTODIAN] || '0',
               balances: json.balances || {},
               oracleDeployed: json.oracleDeployed,
               aggregator: json.aggregator,
