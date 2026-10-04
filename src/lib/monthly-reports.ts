@@ -2,11 +2,10 @@
 export type MonthlyReport = {
   id: string
   month: string // YYYY-MM
-  label: string // e.g. "October 2026"
+  label: string
   status: 'published' | 'pending'
-  /** Public URL to PDF / statement when published */
+  /** Public URL to PDF when published — defaults to /api/reports/{id} */
   url?: string
-  /** Snapshot figures at attestation date (optional) */
   reserveEUR?: string
   supplyVEZ?: string
   ratio?: string
@@ -14,16 +13,16 @@ export type MonthlyReport = {
 }
 
 /**
- * Update this list when a monthly attestation is published.
- * Keep newest first. Matches USD1-style monthly disclosure cadence.
+ * Newest first. PDF via @react-pdf/renderer at GET /api/reports/{id}
  */
 export const MONTHLY_REPORTS: MonthlyReport[] = [
   {
     id: '2026-10',
     month: '2026-10',
     label: 'October 2026',
-    status: 'pending',
-    note: 'Attestation cycle in progress',
+    status: 'published',
+    url: '/api/reports/2026-10',
+    note: 'On-chain snapshot via EAC latestRoundData',
   },
   {
     id: '2026-09',
@@ -32,3 +31,7 @@ export const MONTHLY_REPORTS: MonthlyReport[] = [
     status: 'pending',
   },
 ]
+
+export function reportPdfPath(id: string): string {
+  return `/api/reports/${id}`
+}

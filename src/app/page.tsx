@@ -520,9 +520,14 @@ export default function Home() {
                     </span>
                   </td>
                   <td style={{ textAlign: 'right' }}>
-                    {r.status === 'published' && r.url ? (
-                      <a className="link" href={r.url} target="_blank" rel="noreferrer">
-                        View
+                    {r.status === 'published' ? (
+                      <a
+                        className="link"
+                        href={r.url || `/api/reports/${r.id}`}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        PDF
                       </a>
                     ) : (
                       <span style={{ color: 'var(--muted)' }}>—</span>
