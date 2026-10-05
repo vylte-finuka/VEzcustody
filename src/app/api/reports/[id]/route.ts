@@ -143,7 +143,7 @@ export async function GET(
     const data: ReserveReportData = {
       periodLabel: report.label,
       month: report.month,
-      issuedAt: new Date().toISOString().slice(0, 10),
+      issuedAt: report.issuedOn || new Date().toISOString().slice(0, 10),
       reserveEUR: report.reserveEUR ?? live.reserveEUR,
       supplyVEZ: report.supplyVEZ ?? live.supplyVEZ,
       ratio: report.ratio ?? live.ratio,
@@ -156,6 +156,10 @@ export async function GET(
       blockNumber: live.blockNumber,
       roundId: live.roundId,
       note: report.note,
+      issuer: report.issuer || 'Vyft Ltd',
+      network: report.network || 'Slura Charène',
+      summaryFr: report.summaryFr,
+      summaryEn: report.summaryEn,
     }
 
     // @react-pdf/renderer — server-side buffer

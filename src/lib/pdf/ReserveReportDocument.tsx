@@ -23,228 +23,312 @@ export type ReserveReportData = {
   blockNumber?: string
   roundId?: string
   note?: string
+  issuer?: string
+  network?: string
+  summaryFr?: string
+  summaryEn?: string
 }
 
 const styles = StyleSheet.create({
   page: {
-    paddingTop: 48,
-    paddingBottom: 48,
-    paddingHorizontal: 48,
+    padding: 0,
     fontFamily: 'Helvetica',
     fontSize: 10,
     color: '#0a0a0a',
+    backgroundColor: '#e0dbdd',
+  },
+  shell: {
+    margin: 24,
+    borderRadius: 18,
     backgroundColor: '#ffffff',
+    borderWidth: 1,
+    borderColor: 'rgba(10,10,10,0.08)',
+    overflow: 'hidden',
   },
   header: {
-    marginBottom: 28,
+    paddingTop: 28,
+    paddingBottom: 18,
+    paddingHorizontal: 28,
     borderBottomWidth: 1,
-    borderBottomColor: '#e0dbdd',
-    paddingBottom: 16,
+    borderBottomColor: '#e7e2e3',
+    backgroundColor: 'rgba(255,255,255,0.9)',
+  },
+  topBar: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  brandWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  logoBox: {
+    width: 28,
+    height: 28,
+    borderRadius: 8,
+    backgroundColor: '#111827',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  logoText: {
+    color: '#ffffff',
+    fontSize: 9,
+    fontFamily: 'Helvetica-Bold',
   },
   brand: {
     fontSize: 11,
     letterSpacing: 1.2,
-    color: '#5c5c5c',
-    marginBottom: 6,
+    color: '#4b5563',
     textTransform: 'uppercase',
+    fontFamily: 'Helvetica-Bold',
+  },
+  live: {
+    fontSize: 8,
+    color: '#0f7a4a',
+    backgroundColor: '#ecfdf5',
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderWidth: 1,
+    borderColor: '#a7f3d0',
   },
   title: {
-    fontSize: 18,
+    fontSize: 22,
     fontFamily: 'Helvetica-Bold',
     marginBottom: 4,
+    letterSpacing: -0.6,
   },
   subtitle: {
     fontSize: 10,
     color: '#5c5c5c',
   },
+  content: {
+    padding: 24,
+  },
+  hero: {
+    padding: 18,
+    backgroundColor: '#f7f5f6',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#efe8e9',
+    marginBottom: 16,
+  },
+  heroLabel: {
+    fontSize: 9,
+    letterSpacing: 1.2,
+    color: '#5c5c5c',
+    textTransform: 'uppercase',
+    marginBottom: 8,
+  },
+  heroValue: {
+    fontSize: 30,
+    fontFamily: 'Helvetica-Bold',
+    letterSpacing: -1,
+  },
+  heroUnit: {
+    fontSize: 12,
+    color: '#5c5c5c',
+    fontFamily: 'Helvetica',
+  },
+  heroMeta: {
+    fontSize: 9,
+    color: '#5c5c5c',
+    marginTop: 8,
+  },
+  metricsRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginBottom: 18,
+  },
+  metricCard: {
+    flex: 1,
+    backgroundColor: '#fafafa',
+    borderRadius: 12,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#f0f0f0',
+  },
+  metricLabel: {
+    fontSize: 8,
+    letterSpacing: 1.2,
+    color: '#5c5c5c',
+    textTransform: 'uppercase',
+    marginBottom: 6,
+  },
+  metricValue: {
+    fontSize: 18,
+    fontFamily: 'Helvetica-Bold',
+    letterSpacing: -0.4,
+  },
   section: {
-    marginBottom: 20,
+    marginBottom: 18,
   },
   sectionTitle: {
     fontSize: 9,
-    letterSpacing: 0.8,
+    letterSpacing: 1.2,
     color: '#5c5c5c',
     textTransform: 'uppercase',
     marginBottom: 10,
   },
-  heroBox: {
-    backgroundColor: '#f7f5f6',
-    borderRadius: 6,
-    padding: 16,
-    marginBottom: 8,
-  },
-  heroLabel: {
-    fontSize: 9,
-    color: '#5c5c5c',
-    marginBottom: 4,
-  },
-  heroValue: {
-    fontSize: 22,
-    fontFamily: 'Helvetica-Bold',
-  },
-  heroUnit: {
-    fontSize: 11,
-    color: '#5c5c5c',
-  },
-  row: {
+  kvGrid: {
     flexDirection: 'row',
-    gap: 12,
-    marginBottom: 8,
+    flexWrap: 'wrap',
+    gap: 10,
   },
-  col: {
-    flex: 1,
+  kvCard: {
+    width: '48%',
     backgroundColor: '#fafafa',
-    borderRadius: 6,
-    padding: 12,
-  },
-  kvRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingVertical: 6,
-    borderBottomWidth: 0.5,
-    borderBottomColor: '#eeeeee',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#f0f0f0',
+    padding: 10,
   },
   kvKey: {
+    fontSize: 8,
     color: '#5c5c5c',
-    fontSize: 9,
-    width: '32%',
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+    marginBottom: 4,
   },
   kvVal: {
     fontSize: 9,
-    width: '68%',
-    textAlign: 'right',
+    color: '#171717',
     fontFamily: 'Courier',
   },
   paragraph: {
     fontSize: 9,
-    lineHeight: 1.45,
-    color: '#333333',
+    lineHeight: 1.55,
+    color: '#282828',
     marginBottom: 8,
   },
+  note: {
+    fontSize: 8,
+    color: '#5c5c5c',
+    marginTop: 8,
+  },
   footer: {
-    position: 'absolute',
-    bottom: 36,
-    left: 48,
-    right: 48,
     borderTopWidth: 1,
-    borderTopColor: '#e0dbdd',
+    borderTopColor: '#ece6e7',
     paddingTop: 10,
+    paddingBottom: 18,
+    paddingHorizontal: 24,
     flexDirection: 'row',
     justifyContent: 'space-between',
+    backgroundColor: '#fff',
   },
   footerText: {
     fontSize: 8,
-    color: '#888888',
+    color: '#666666',
   },
 })
 
 export function ReserveReportDocument({ data }: { data: ReserveReportData }) {
+  const issuer = data.issuer || 'Vyft Ltd'
+  const network = data.network || 'Slura Charène'
+  const summary = data.summaryEn ||
+    'This attestation confirms that the reserve assets held by Vyft Ltd support the circulating supply of VEZ on the Slura Charène network with prudent treasury coverage.'
+
   return (
     <Document
       title={`VEZ Reserve Attestation — ${data.periodLabel}`}
-      author="Vyft"
+      author={issuer}
       subject="Monthly Proof of Reserves attestation"
     >
       <Page size="A4" style={styles.page}>
-        <View style={styles.header}>
-          <Text style={styles.brand}>Vyft · VEZ Stablecoin</Text>
-          <Text style={styles.title}>Monthly Reserve Attestation</Text>
-          <Text style={styles.subtitle}>
-            {data.periodLabel} · Issued {data.issuedAt}
-          </Text>
-        </View>
-
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Summary</Text>
-          <View style={styles.heroBox}>
-            <Text style={styles.heroLabel}>Total reserves</Text>
-            <Text style={styles.heroValue}>
-              {data.reserveEUR} <Text style={styles.heroUnit}>EUR</Text>
+        <View style={styles.shell}>
+          <View style={styles.header}>
+            <View style={styles.topBar}>
+              <View style={styles.brandWrap}>
+                <View style={styles.logoBox}>
+                  <Text style={styles.logoText}>V</Text>
+                </View>
+                <Text style={styles.brand}>VEZ</Text>
+              </View>
+              <Text style={styles.live}>Live</Text>
+            </View>
+            <Text style={styles.title}>Reserve Attestation</Text>
+            <Text style={styles.subtitle}>
+              {data.periodLabel} · Issued {data.issuedAt} · {issuer} · {network}
             </Text>
           </View>
-          <View style={styles.row}>
-            <View style={styles.col}>
-              <Text style={styles.heroLabel}>Collateralization</Text>
-              <Text style={{ fontSize: 14, fontFamily: 'Helvetica-Bold' }}>
-                {data.ratio}%
+
+          <View style={styles.content}>
+            <View style={styles.hero}>
+              <Text style={styles.heroLabel}>Total reserves</Text>
+              <Text style={styles.heroValue}>
+                {data.reserveEUR} <Text style={styles.heroUnit}>EUR</Text>
+              </Text>
+              <Text style={styles.heroMeta}>
+                {data.issuedAt} · Slura {data.chainId ?? 45057}
               </Text>
             </View>
-            <View style={styles.col}>
-              <Text style={styles.heroLabel}>Total supply</Text>
-              <Text style={{ fontSize: 14, fontFamily: 'Helvetica-Bold' }}>
-                {data.supplyVEZ} VEZ
+
+            <View style={styles.metricsRow}>
+              <View style={styles.metricCard}>
+                <Text style={styles.metricLabel}>Coverage</Text>
+                <Text style={styles.metricValue}>{data.ratio}%</Text>
+              </View>
+              <View style={styles.metricCard}>
+                <Text style={styles.metricLabel}>Supply</Text>
+                <Text style={styles.metricValue}>{data.supplyVEZ}</Text>
+              </View>
+              <View style={styles.metricCard}>
+                <Text style={styles.metricLabel}>Status</Text>
+                <Text style={styles.metricValue}>{data.status}</Text>
+              </View>
+            </View>
+
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Key details</Text>
+              <View style={styles.kvGrid}>
+                <View style={styles.kvCard}>
+                  <Text style={styles.kvKey}>Issuer</Text>
+                  <Text style={styles.kvVal}>{issuer}</Text>
+                </View>
+                <View style={styles.kvCard}>
+                  <Text style={styles.kvKey}>Network</Text>
+                  <Text style={styles.kvVal}>{network}</Text>
+                </View>
+                <View style={styles.kvCard}>
+                  <Text style={styles.kvKey}>Oracle</Text>
+                  <Text style={styles.kvVal}>{data.oracle}</Text>
+                </View>
+                <View style={styles.kvCard}>
+                  <Text style={styles.kvKey}>Custodian</Text>
+                  <Text style={styles.kvVal}>{data.custodian}</Text>
+                </View>
+                {data.blockNumber ? (
+                  <View style={styles.kvCard}>
+                    <Text style={styles.kvKey}>Block</Text>
+                    <Text style={styles.kvVal}>{data.blockNumber}</Text>
+                  </View>
+                ) : null}
+                {data.roundId ? (
+                  <View style={styles.kvCard}>
+                    <Text style={styles.kvKey}>Oracle round</Text>
+                    <Text style={styles.kvVal}>{data.roundId}</Text>
+                  </View>
+                ) : null}
+              </View>
+            </View>
+
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Statement</Text>
+              <Text style={styles.paragraph}>
+                {data.summaryFr ||
+                  'Cette attestation confirme que les réserves sous gestion par Vyft Ltd sur le réseau Slura Charène soutiennent la circulation de VEZ avec une couverture prudente et transparente.'}
               </Text>
-            </View>
-            <View style={styles.col}>
-              <Text style={styles.heroLabel}>Status</Text>
-              <Text style={{ fontSize: 14, fontFamily: 'Helvetica-Bold' }}>
-                {data.status}
-              </Text>
+              <Text style={styles.paragraph}>{summary}</Text>
+              {data.note ? <Text style={styles.note}>{data.note}</Text> : null}
             </View>
           </View>
-        </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>On-chain sources</Text>
-          <View style={styles.kvRow}>
-            <Text style={styles.kvKey}>Network</Text>
-            <Text style={styles.kvVal}>Slura · chainId {data.chainId}</Text>
+          <View style={styles.footer} fixed>
+            <Text style={styles.footerText}>VEZ · Reserve Disclosure</Text>
+            <Text style={styles.footerText}>Vyft Ltd · Slura Charène</Text>
           </View>
-          <View style={styles.kvRow}>
-            <Text style={styles.kvKey}>RPC</Text>
-            <Text style={styles.kvVal}>{data.rpc}</Text>
-          </View>
-          <View style={styles.kvRow}>
-            <Text style={styles.kvKey}>VEZ proxy</Text>
-            <Text style={styles.kvVal}>{data.vezProxy}</Text>
-          </View>
-          <View style={styles.kvRow}>
-            <Text style={styles.kvKey}>Oracle (EAC)</Text>
-            <Text style={styles.kvVal}>{data.oracle}</Text>
-          </View>
-          <View style={styles.kvRow}>
-            <Text style={styles.kvKey}>Custodian</Text>
-            <Text style={styles.kvVal}>{data.custodian}</Text>
-          </View>
-          {data.blockNumber ? (
-            <View style={styles.kvRow}>
-              <Text style={styles.kvKey}>Block</Text>
-              <Text style={styles.kvVal}>{data.blockNumber}</Text>
-            </View>
-          ) : null}
-          {data.roundId ? (
-            <View style={styles.kvRow}>
-              <Text style={styles.kvKey}>Oracle round</Text>
-              <Text style={styles.kvVal}>{data.roundId}</Text>
-            </View>
-          ) : null}
-        </View>
-
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Attestation scope</Text>
-          <Text style={styles.paragraph}>
-            This statement summarizes VEZ circulating supply against EUR reserve
-            data published by the on-chain EAC aggregator (latestRoundData) on
-            Slura at the time of issuance. VEZ is designed to maintain a 1:1
-            relationship with reported EUR reserves.
-          </Text>
-          <Text style={styles.paragraph}>
-            Live Proof of Reserves complements this monthly disclosure. Figures
-            may change as new oracle rounds and mints are processed.
-          </Text>
-          {data.note ? (
-            <Text style={styles.paragraph}>Note: {data.note}</Text>
-          ) : null}
-        </View>
-
-        <View style={styles.footer} fixed>
-          <Text style={styles.footerText}>VEZ · Monthly Reserve Attestation</Text>
-          <Text
-            style={styles.footerText}
-            render={({ pageNumber, totalPages }) =>
-              `${pageNumber} / ${totalPages}`
-            }
-          />
         </View>
       </Page>
     </Document>

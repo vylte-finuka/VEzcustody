@@ -208,6 +208,16 @@ function copyText(text: string) {
   }
 }
 
+function parseNumericValue(raw: string | null | undefined): number {
+  if (!raw) return 0
+  const normalized = String(raw)
+    .replace(/[^0-9,.-]/g, '')
+    .replace(/,/g, '')
+    .replace(/\.(?=.*\.)/g, '')
+  const value = Number.parseFloat(normalized)
+  return Number.isFinite(value) ? value : 0
+}
+
 export default function Home() {
   const [data, setData] = useState<PorView | null>(null)
   const [loading, setLoading] = useState(true)
@@ -217,6 +227,22 @@ export default function Home() {
   const [minting, setMinting] = useState(false)
   const [mintMsg, setMintMsg] = useState('')
   const [blockNumber, setBlockNumber] = useState('')
+  const [fxRate, setFxRate] = useState(1.09)
+
+  useEffect(() => {
+    ;(async () => {
+      try {
+        const res = await fetch('https://api.frankfurter.app/latest?from=EUR&to=USD', {
+          cache: 'no-store',
+        })
+        const json = await res.json()
+        const rate = Number(json?.rates?.USD)
+        if (Number.isFinite(rate) && rate > 0) setFxRate(rate)
+      } catch {
+        /* keep fallback */
+      }
+    })()
+  }, [])
 
   const fetchData = useCallback(async () => {
     setLoading(true)
@@ -318,6 +344,13 @@ export default function Home() {
   const reserve = data?.reserve ?? (loading ? '…' : '—')
   const supply = data?.totalSupply ?? (loading ? '…' : '—')
   const ratio = data?.ratio ?? (loading ? '…' : '—')
+  const reserveValue = parseNumericValue(data?.reserve)
+  const reserveUsdValue = reserveValue * fxRate
+  const reserveUsdDisplay = reserveUsdValue.toLocaleString('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    maximumFractionDigits: 2,
+  })
   const isBacked = data?.isBacked ?? false
   const oracle = data?.aggregator ?? AGG
   const vez = data?.vezProxy ?? VEZ
@@ -389,6 +422,21 @@ export default function Home() {
               : ''}
             {blockNumber ? ` · block ${blockNumber}` : ''}
           </div>
+
+          <div className="price-strip" aria-label="Treasury reserve reference">
+            <div className="price-chip">
+              <span>Reserve value</span>
+              <strong>{reserve === '—' ? '—' : `€${reserveValue.toLocaleString('en-US', { maximumFractionDigits: 2 })} EUR`}</strong>
+            </div>
+            <div className="price-chip accent">
+              <span>USD equivalent</span>
+              <strong>{reserve === '—' ? '—' : reserveUsdDisplay}</strong>
+            </div>
+            <div className="price-chip muted">
+              <span>FX</span>
+              <strong>1 EUR = {fxRate.toFixed(4)} USD</strong>
+            </div>
+          </div>
         </section>
 
         {/* Ratio + supply — no long captions */}
@@ -446,6 +494,12 @@ export default function Home() {
               <div className="k">Oracle fn</div>
               <div className="v mono">latestRoundData()</div>
             </div>
+            <div>
+              <div className="k">Treasury value</div>
+              <div className="v mono">
+                {reserve === '—' ? '—' : `€${reserveValue.toLocaleString('en-US', { maximumFractionDigits: 2 })} EUR / ${reserveUsdDisplay}`}
+              </div>
+            </div>
           </div>
         </section>
 
@@ -483,76 +537,76 @@ export default function Home() {
           </section>
         )}
 
-        {/* Monthly attestation reports — USD1-style */}
+        {/* Reserve attestations — issuance and disclosure log */}
         <section className="panel" style={{ marginBottom: '1rem' }}>
           <div className="panel-h">
-            <h2>Monthly reports</h2>
-            <span className="sub">Reserve attestation</span>
+            <h2>Reserve attestations</h2>
+            <span className="sub">Vyft Ltd • Slura Charène</span>
           </div>
-          <table className="data">
-            <thead>
-              <tr>
-                <th>Period</th>
-                <th>Status</th>
-                <th style={{ textAlign: 'right' }}>Report</th>
-              </tr>
-            </thead>
-            <tbody>
-              {MONTHLY_REPORTS.map((r) => (
-                <tr key={r.id}>
-                  <td>{r.label}</td>
-                  <td>
-                    <span
-                      className={`badge${r.status === 'pending' ? ' pending' : ''}`}
-                    >
-                      {r.status === 'published' ? 'Published' : 'Pending'}
-                    </span>
-                  </td>
-                  <td style={{ textAlign: 'right' }}>
-                    {r.status === 'published' && r.url ? (
-                      <a className="link" href={r.url} target="_blank" rel="noreferrer">
-                        View
-                      </a>
-                    ) : (
-                      <span style={{ color: 'var(--muted)' }}>—</span>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </section>
 
-        {/* Mint — minimal */}
-        <section className="panel" style={{ marginBottom: '1rem' }}>
-          <div className="panel-h">
-            <h2>Mint</h2>
-            <span className="sub">1:1 EUR</span>
+          <div className="report-list">
+            {MONTHLY_REPORTS.map((r) => (
+              <article key={r.id} className="report-card">
+                <div className="report-header">
+                  <div>
+                    <div className="eyebrow">Reserve attestation</div>
+                    <h3>{r.label}</h3>
+                  </div>
+                  <span className={`badge${r.status === 'pending' ? ' pending' : ''}`}>
+                    {r.status === 'published' ? 'Published' : 'Pending'}
+                  </span>
+                </div>
+
+                <div className="report-meta">
+                  <span>
+                    <strong>Issuer:</strong> {r.issuer || 'Vyft Ltd'}
+                  </span>
+                  <span>
+                    <strong>Network:</strong> {r.network || 'Slura Charène'}
+                  </span>
+                  <span>
+                    <strong>Issued:</strong> {r.issuedOn || 'To be published'}
+                  </span>
+                </div>
+
+                <div className="report-metrics">
+                  <div className="metric-box">
+                    <span className="label">Reserve</span>
+                    <span className="value">{r.reserveEUR || '—'}</span>
+                  </div>
+                  <div className="metric-box">
+                    <span className="label">Supply</span>
+                    <span className="value">{r.supplyVEZ || '—'}</span>
+                  </div>
+                  <div className="metric-box">
+                    <span className="label">Coverage</span>
+                    <span className="value">{r.ratio || '—'}</span>
+                  </div>
+                </div>
+
+                <div className="report-intro">
+                  <p>
+                    <strong>FR:</strong> {r.summaryFr}
+                  </p>
+                  <p>
+                    <strong>EN:</strong> {r.summaryEn}
+                  </p>
+                </div>
+
+                <div className="report-cta">
+                  {r.status === 'published' && r.url ? (
+                    <a className="report-link" href={r.url} target="_blank" rel="noreferrer">
+                      View report
+                    </a>
+                  ) : (
+                    <span className="report-status">
+                      {r.note || 'Awaiting publication'}
+                    </span>
+                  )}
+                </div>
+              </article>
+            ))}
           </div>
-          <form className="form" onSubmit={handleMint}>
-            <div className="field" style={{ flex: 2 }}>
-              <input
-                value={mintTo}
-                onChange={(e) => setMintTo(e.target.value)}
-                placeholder="0x…"
-                required
-              />
-            </div>
-            <div className="field" style={{ maxWidth: 120 }}>
-              <input
-                value={mintAmount}
-                onChange={(e) => setMintAmount(e.target.value)}
-                placeholder="1.0"
-                required
-              />
-            </div>
-            <button type="submit" className="btn" disabled={minting}>
-              {minting ? '…' : 'Mint'}
-            </button>
-          </form>
-          {mintMsg && (
-            <p className={`msg ${mintMsg.startsWith('OK') ? 'ok' : 'err'}`}>{mintMsg}</p>
-          )}
         </section>
 
         {error && (
