@@ -6,6 +6,10 @@ const nextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
   },
+  // Workaround for Next.js 14 build-worker chunk-loading bug (missing ./682.js)
+  experimental: {
+    webpackBuildWorker: false,
+  },
   env: {
     NEXT_PUBLIC_SLURA_RPC_URL:
       process.env.NEXT_PUBLIC_SLURA_RPC_URL ||

@@ -42,7 +42,7 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     backgroundColor: '#ffffff',
     borderWidth: 1,
-    borderColor: 'rgba(10,10,10,0.08)',
+    borderColor: 'rgba(0,0,0,0.08)',
     overflow: 'hidden',
   },
   header: {
@@ -50,7 +50,7 @@ const styles = StyleSheet.create({
     paddingBottom: 18,
     paddingHorizontal: 28,
     borderBottomWidth: 1,
-    borderBottomColor: '#e7e2e3',
+    borderBottomColor: 'rgba(0,0,0,0.08)',
     backgroundColor: 'rgba(255,255,255,0.9)',
   },
   topBar: {
@@ -80,19 +80,19 @@ const styles = StyleSheet.create({
   brand: {
     fontSize: 11,
     letterSpacing: 1.2,
-    color: '#4b5563',
+    color: '#0a0a0a',
     textTransform: 'uppercase',
     fontFamily: 'Helvetica-Bold',
   },
   live: {
     fontSize: 8,
     color: '#0f7a4a',
-    backgroundColor: '#ecfdf5',
+    backgroundColor: 'rgba(15,122,74,0.08)',
     borderRadius: 999,
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderWidth: 1,
-    borderColor: '#a7f3d0',
+    borderColor: 'rgba(15,122,74,0.2)',
   },
   title: {
     fontSize: 22,
@@ -109,10 +109,10 @@ const styles = StyleSheet.create({
   },
   hero: {
     padding: 18,
-    backgroundColor: '#f7f5f6',
+    backgroundColor: '#fafafa',
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#efe8e9',
+    borderColor: 'rgba(0,0,0,0.08)',
     marginBottom: 16,
   },
   heroLabel: {
@@ -126,6 +126,7 @@ const styles = StyleSheet.create({
     fontSize: 30,
     fontFamily: 'Helvetica-Bold',
     letterSpacing: -1,
+    color: '#0a0a0a',
   },
   heroUnit: {
     fontSize: 12,
@@ -148,7 +149,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 12,
     borderWidth: 1,
-    borderColor: '#f0f0f0',
+    borderColor: 'rgba(0,0,0,0.08)',
   },
   metricLabel: {
     fontSize: 8,
@@ -161,6 +162,7 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontFamily: 'Helvetica-Bold',
     letterSpacing: -0.4,
+    color: '#0a0a0a',
   },
   section: {
     marginBottom: 18,
@@ -182,7 +184,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#fafafa',
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: '#f0f0f0',
+    borderColor: 'rgba(0,0,0,0.08)',
     padding: 10,
   },
   kvKey: {
@@ -194,13 +196,13 @@ const styles = StyleSheet.create({
   },
   kvVal: {
     fontSize: 9,
-    color: '#171717',
+    color: '#0a0a0a',
     fontFamily: 'Courier',
   },
   paragraph: {
     fontSize: 9,
     lineHeight: 1.55,
-    color: '#282828',
+    color: '#0a0a0a',
     marginBottom: 8,
   },
   note: {
@@ -210,7 +212,7 @@ const styles = StyleSheet.create({
   },
   footer: {
     borderTopWidth: 1,
-    borderTopColor: '#ece6e7',
+    borderTopColor: 'rgba(0,0,0,0.08)',
     paddingTop: 10,
     paddingBottom: 18,
     paddingHorizontal: 24,
@@ -220,9 +222,39 @@ const styles = StyleSheet.create({
   },
   footerText: {
     fontSize: 8,
-    color: '#666666',
+    color: '#5c5c5c',
   },
-})
+    goldLine: {
+      height: 3,
+      backgroundColor: '#c5a059',
+      borderRadius: 2,
+      marginBottom: 14,
+    },
+    badge: {
+      fontSize: 7,
+      letterSpacing: 0.8,
+      color: '#ffffff',
+      paddingHorizontal: 6,
+      paddingVertical: 2,
+      borderRadius: 4,
+      fontFamily: 'Helvetica-Bold',
+    },
+    badgeGreen: { backgroundColor: '#0f7a4a' },
+    badgeAmber: { backgroundColor: '#b8860b' },
+    badgeRed: { backgroundColor: '#8b1e1e' },
+    sectionHeaderRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      marginBottom: 10,
+    },
+    sectionDot: {
+      width: 6,
+      height: 6,
+      borderRadius: 3,
+      backgroundColor: '#c5a059',
+    },
+  })
 
 export function ReserveReportDocument({ data }: { data: ReserveReportData }) {
   const issuer = data.issuer || 'Vyft Ltd'
@@ -255,6 +287,8 @@ export function ReserveReportDocument({ data }: { data: ReserveReportData }) {
           </View>
 
           <View style={styles.content}>
+            <View style={styles.goldLine} />
+
             <View style={styles.hero}>
               <Text style={styles.heroLabel}>Total reserves</Text>
               <Text style={styles.heroValue}>
@@ -281,7 +315,10 @@ export function ReserveReportDocument({ data }: { data: ReserveReportData }) {
             </View>
 
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Key details</Text>
+              <View style={styles.sectionHeaderRow}>
+                <View style={styles.sectionDot} />
+                <Text style={styles.sectionTitle}>Key details</Text>
+              </View>
               <View style={styles.kvGrid}>
                 <View style={styles.kvCard}>
                   <Text style={styles.kvKey}>Issuer</Text>
@@ -315,7 +352,35 @@ export function ReserveReportDocument({ data }: { data: ReserveReportData }) {
             </View>
 
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Statement</Text>
+              <View style={styles.sectionHeaderRow}>
+                <View style={styles.sectionDot} />
+                <Text style={styles.sectionTitle}>Oracle data (Chainlink)</Text>
+              </View>
+              <View style={styles.kvGrid}>
+                <View style={styles.kvCard}>
+                  <Text style={styles.kvKey}>Feed address</Text>
+                  <Text style={styles.kvVal}>{data.oracle}</Text>
+                </View>
+                <View style={styles.kvCard}>
+                  <Text style={styles.kvKey}>Round ID</Text>
+                  <Text style={styles.kvVal}>{data.roundId || '—'}</Text>
+                </View>
+                <View style={styles.kvCard}>
+                  <Text style={styles.kvKey}>Block</Text>
+                  <Text style={styles.kvVal}>{data.blockNumber || '—'}</Text>
+                </View>
+                <View style={styles.kvCard}>
+                  <Text style={styles.kvKey}>RPC</Text>
+                  <Text style={styles.kvVal}>{data.rpc}</Text>
+                </View>
+              </View>
+            </View>
+
+            <View style={styles.section}>
+              <View style={styles.sectionHeaderRow}>
+                <View style={styles.sectionDot} />
+                <Text style={styles.sectionTitle}>Statement</Text>
+              </View>
               <Text style={styles.paragraph}>
                 {data.summaryFr ||
                   'Cette attestation confirme que les réserves sous gestion par Vyft Ltd sur le réseau Slura Charène soutiennent la circulation de VEZ avec une couverture prudente et transparente.'}

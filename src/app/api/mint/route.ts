@@ -8,6 +8,8 @@ import {
   encodeFunctionData,
   type Hex,
   type Address,
+  type PublicClient,
+  type WalletClient,
 } from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'
 import { VEZ_PROXY_ABI } from '../../../lib/contracts/abi'

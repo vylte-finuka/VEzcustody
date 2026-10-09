@@ -100,7 +100,10 @@ async function fetchPorClient(): Promise<PorView> {
   let supplySource = sum > 0n ? 'eth_getBalance(sum)' : 'none'
   if (sum > 0n) sources.push('native balances')
 
-  // totalSupply() seulement si eth_call valide
+  // Réserve = somme des soldes VEZ (custodian + VEZ) comme preuve de réserve
+  let reserve = sum
+
+  // totalSupply() seulement si eth_call valide (peut dépasser la somme des soldes)
   try {
     const ts = await rpcCall('eth_call', [{ to: VEZ, data: '0x18160ddd' }, 'latest'])
     if (isValidCall(ts, 1)) {
@@ -117,8 +120,7 @@ async function fetchPorClient(): Promise<PorView> {
     warnings.push(`totalSupply: ${e instanceof Error ? e.message : String(e)}`)
   }
 
-  // --- Oracle ---
-  let reserve = 0n
+  // --- Oracle (pour le taux EUR→USD uniquement, pas pour la réserve) ---
   let oracleDeployed = false
   let aggregator = AGG
   try {
@@ -144,11 +146,12 @@ async function fetchPorClient(): Promise<PorView> {
     return null
   }
 
+  // On garde l'appel oracle pour le taux (déjà géré dans le useEffect fxRate)
+  // mais on ne l'utilise pas pour la réserve ici
   if (oracleDeployed) {
     const ans = await tryRound(AGG)
     if (ans !== null) {
-      reserve = ans
-      sources.push('oracle')
+      sources.push('orate@agg') // juste pour info, pas utilisé pour reserve
     } else {
       warnings.push('Oracle déployé mais round data illisible')
     }
@@ -157,7 +160,6 @@ async function fetchPorClient(): Promise<PorView> {
     // tentative sur VEZ au cas où
     const ans = await tryRound(VEZ)
     if (ans !== null) {
-      reserve = ans
       aggregator = VEZ
       oracleDeployed = true
       sources.push('oracle@vez')
@@ -227,21 +229,28 @@ export default function Home() {
   const [minting, setMinting] = useState(false)
   const [mintMsg, setMintMsg] = useState('')
   const [blockNumber, setBlockNumber] = useState('')
-  const [fxRate, setFxRate] = useState(1.09)
+  const [fxRate, setFxRate] = useState(1.08)
 
   useEffect(() => {
-    ;(async () => {
+    const fetchOracleRate = async () => {
       try {
-        const res = await fetch('https://api.frankfurter.app/latest?from=EUR&to=USD', {
-          cache: 'no-store',
-        })
-        const json = await res.json()
-        const rate = Number(json?.rates?.USD)
-        if (Number.isFinite(rate) && rate > 0) setFxRate(rate)
+        const raw = await rpcCall('eth_call', [{ to: AGG, data: '0xfeaf968c' }, 'latest'])
+        if (typeof raw === 'string' && raw.startsWith('0x') && raw.length > 66) {
+          const body = raw.slice(2)
+          const words = body.match(/.{64}/g) || []
+          if (words.length >= 2) {
+            const price = BigInt('0x' + words[1])
+            const rate = Number(price) / 1e8
+            if (Number.isFinite(rate) && rate > 0) setFxRate(rate)
+          }
+        }
       } catch {
-        /* keep fallback */
+        /* conserve le fallback */
       }
-    })()
+    }
+    fetchOracleRate()
+    const id = setInterval(fetchOracleRate, 5 * 60 * 1000)
+    return () => clearInterval(id)
   }, [])
 
   const fetchData = useCallback(async () => {
@@ -594,16 +603,23 @@ export default function Home() {
                 </div>
 
                 <div className="report-cta">
-                  {r.status === 'published' && r.url ? (
-                    <a className="report-link" href={r.url} target="_blank" rel="noreferrer">
-                      View report
-                    </a>
-                  ) : (
-                    <span className="report-status">
-                      {r.note || 'Awaiting publication'}
-                    </span>
-                  )}
-                </div>
+                                  {r.status === 'published' ? (
+                                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                                      {r.url && (
+                                        <a className="report-link" href={r.url} target="_blank" rel="noreferrer">
+                                          View report
+                                        </a>
+                                      )}
+                                      <a className="report-link" href={`/api/reports/${r.id}`} target="_blank" rel="noreferrer">
+                                        Download PDF
+                                      </a>
+                                    </div>
+                                  ) : (
+                                    <span className="report-status">
+                                      {r.note || 'Awaiting publication'}
+                                    </span>
+                                  )}
+                                </div>
               </article>
             ))}
           </div>
