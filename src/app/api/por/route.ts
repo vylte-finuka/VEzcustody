@@ -1,4 +1,9 @@
 import { NextResponse } from 'next/server'
+import {
+  COLLATERAL_RATIO_PCT,
+  collateralRatioPct,
+  isFullyBacked,
+} from '../../lib/collateral'
 
 /**
  * GET /api/por
@@ -182,15 +187,19 @@ export async function GET() {
       ratio = 0
       status = 'No Reserve / Idle'
     } else if (supply > 0n && reserve > 0n) {
-      ratio = Number((reserve * 10000n) / supply) / 100
-      status = ratio >= 99.5 ? 'Fully Backed' : ratio > 0 ? 'Partial' : 'Under Backed'
+      ratio = collateralRatioPct(reserve, supply)
+      status = isFullyBacked(ratio)
+        ? 'Fully Backed'
+        : ratio > 0
+          ? 'Partial'
+          : 'Under Backed'
     } else {
       // supply > 0, reserve = 0
       ratio = 0
       status = 'Under Backed / No Oracle'
     }
 
-    const isBacked = ratio >= 99.5
+    const isBacked = isFullyBacked(ratio)
 
     return NextResponse.json({
       ok: true,
@@ -207,6 +216,7 @@ export async function GET() {
       reserveAnswer: formatVez(reserve),
       reserveAnswerWei: reserve.toString(),
       reserveRatio: ratio.toFixed(2),
+      targetCollateralRatio: COLLATERAL_RATIO_PCT,
       isBacked,
       status,
       roundId: roundId.toString(),
