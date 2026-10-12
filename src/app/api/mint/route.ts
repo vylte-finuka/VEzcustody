@@ -13,10 +13,6 @@ import {
 } from 'viem'
 import { privateKeyToAccount } from 'viem/accounts'
 import { VEZ_PROXY_ABI } from '../../../lib/contracts/abi'
-import {
-  COLLATERAL_RATIO_PCT,
-  availableToMint101,
-} from '../../../lib/collateral'
 
 const RPC = process.env.SLURA_RPC_URL || 'https://slu-charene.vyft-one.com'
 const VEZ = (process.env.VEZ_PROXY_ADDRESS ||
@@ -135,8 +131,7 @@ export async function GET() {
       supplyWei = 0n
     }
 
-    // 101% over-collateralization: max supply = reserve * 100 / 101
-    const available = availableToMint101(reserveWei, supplyWei)
+    const available = reserveWei > supplyWei ? reserveWei - supplyWei : 0n
     const ready =
       keyConfigured && !!signer && oracleOk && available > 0n
 
@@ -157,7 +152,6 @@ export async function GET() {
       reserveEUR: formatUnits(reserveWei, 18),
       totalSupply: formatUnits(supplyWei, 18),
       availableToMint: formatUnits(available, 18),
-      targetCollateralRatio: COLLATERAL_RATIO_PCT,
       roundId,
       requirements: [
         !keyConfigured && 'Set CUSTODIAN_PRIVATE_KEY on Netlify + redeploy',
@@ -165,7 +159,7 @@ export async function GET() {
           signer &&
           signer.toLowerCase() !== CUSTODIAN &&
           `Signer ${signer} ≠ custodian ${CUSTODIAN}`,
-        available === 0n && `No mint headroom at ${COLLATERAL_RATIO_PCT}% collateralization`,
+        available === 0n && 'No mint headroom vs EUR reserve',
       ].filter(Boolean),
     })
   } catch (e) {
@@ -233,12 +227,12 @@ export async function POST(req: NextRequest) {
 
     const { reserveWei, roundId } = await readOracleReserve()
     const supplyWei = await readSupply()
-    const available = availableToMint101(reserveWei, supplyWei)
+    const available = reserveWei > supplyWei ? reserveWei - supplyWei : 0n
 
     if (amountWei > available) {
       return NextResponse.json(
         {
-          error: `Mint exceeds EUR reserve (${COLLATERAL_RATIO_PCT}% PoR)`,
+          error: 'Mint exceeds EUR reserve (1:1 PoR)',
           code: 'INSUFFICIENT_RESERVE',
           reserveEUR: formatUnits(reserveWei, 18),
           currentSupply: formatUnits(supplyWei, 18),
@@ -346,7 +340,7 @@ export async function POST(req: NextRequest) {
       signer: account.address,
       vez: VEZ,
       oracle: ORACLE,
-      message: `Minted ${formatUnits(amountWei, 18)} VEZ → ${recipient} (EUR ${COLLATERAL_RATIO_PCT}% collateral)`,
+      message: `Minted ${formatUnits(amountWei, 18)} VEZ → ${recipient} (EUR 1:1)`,
     })
   } catch (error) {
     console.error('Mint error:', error)
